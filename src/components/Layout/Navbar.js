@@ -51,13 +51,15 @@ const Navbar = ({ onMenuClick }) => {
             onClick={onMenuClick}
             aria-label="Open menu"
           />
-          <Image
-            src={logo}
-            alt="Credility Logo"
-            height="40px"
+          <Heading
+            size="md"
             cursor="pointer"
             onClick={() => navigate('/')}
-          />
+            bgGradient="linear(to-r, blue.400, purple.500)"
+            bgClip="text"
+          >
+            Credility
+          </Heading>
         </HStack>
 
         <HStack spacing={2}>
