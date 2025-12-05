@@ -17,6 +17,8 @@ import {
   useToast,
   FormErrorMessage,
   FormHelperText,
+  HStack,
+  Switch,
 } from '@chakra-ui/react';
 import { createAgent } from '../../services/api';
 import { getCreatorId } from '../../utils/storage';
@@ -29,7 +31,7 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
     agent_name: '',
     display_name: '',
     prompt: '',
-    mode: 'ocr+llm',
+    mode: 'llm',
   });
   const [errors, setErrors] = useState({});
 
@@ -40,6 +42,15 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
+  };
+
+  // Add this new handler
+  const handleOCRToggle = (e) => {
+    const useOCR = e.target.checked;
+    setFormData((prev) => ({
+      ...prev,
+      mode: useOCR ? 'ocr+llm' : 'llm'
+    }));
   };
 
   const validate = () => {
@@ -88,7 +99,7 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
         agent_name: '',
         display_name: '',
         prompt: '',
-        mode: 'ocr+llm',
+        mode: 'llm',
       });
       setErrors({});
       onSuccess && onSuccess(result);
@@ -161,7 +172,7 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
               )}
             </FormControl>
 
-            <FormControl>
+            {/* <FormControl>
               <FormLabel>Processing Mode</FormLabel>
               <Select name="mode" value={formData.mode} onChange={handleChange}>
                 <option value="ocr+llm">
@@ -169,6 +180,22 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
                 </option>
                 <option value="llm">LLM Only (Faster for clear images)</option>
               </Select>
+            </FormControl> */}
+            <FormControl>
+              <FormLabel htmlFor="ocr-toggle">
+                <HStack spacing={3}>
+                  <span>Use OCR</span>
+                  <Switch
+                    id="ocr-toggle"
+                    isChecked={formData.mode === 'ocr+llm'}
+                    onChange={handleOCRToggle}
+                    colorScheme="blue"
+                  />
+                </HStack>
+              </FormLabel>
+              <FormHelperText>
+                Enable OCR (AWS Textract) for scanned documents. Leave off for faster LLM-only processing.
+              </FormHelperText>
             </FormControl>
           </VStack>
         </ModalBody>

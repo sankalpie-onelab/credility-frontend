@@ -16,6 +16,8 @@ import {
   Text,
   Code,
   Divider,
+  HStack,
+  Switch,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
@@ -34,7 +36,7 @@ const CreateAgent = () => {
     agent_name: '',
     display_name: '',
     prompt: '',
-    mode: 'ocr+llm',
+    mode: 'llm',
   });
   const [errors, setErrors] = useState({});
   const bg = useColorModeValue('white', 'gray.700');
@@ -46,6 +48,15 @@ const CreateAgent = () => {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
+  };
+
+  // Add this new handler
+  const handleOCRToggle = (e) => {
+    const useOCR = e.target.checked;
+    setFormData((prev) => ({
+      ...prev,
+      mode: useOCR ? 'ocr+llm' : 'llm'
+    }));
   };
 
   // Add this new function
@@ -229,7 +240,7 @@ const CreateAgent = () => {
                 )}
               </FormControl>
 
-              <FormControl>
+              {/* <FormControl>
                 <FormLabel>Processing Mode</FormLabel>
                 <Select
                   name="mode"
@@ -247,6 +258,26 @@ const CreateAgent = () => {
                   GPT-4 for validation.
                   <br />
                   <strong>LLM Only:</strong> Uses GPT-4 Vision API only (faster).
+                </FormHelperText>
+              </FormControl> */}
+
+              <FormControl>
+                <FormLabel htmlFor="ocr-toggle-page">
+                  <HStack spacing={3}>
+                    <span>Use OCR</span>
+                    <Switch
+                      id="ocr-toggle-page"
+                      isChecked={formData.mode === 'ocr+llm'}
+                      onChange={handleOCRToggle}
+                      colorScheme="blue"
+                      size="lg"
+                    />
+                  </HStack>
+                </FormLabel>
+                <FormHelperText>
+                  <strong>Enabled:</strong> Uses AWS Textract for text extraction + LLM for validation (recommended for scanned documents).
+                  <br />
+                  <strong>Disabled:</strong> Uses LLM Vision API only (faster for clear images).
                 </FormHelperText>
               </FormControl>
 

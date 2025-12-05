@@ -158,6 +158,15 @@ const AgentDetails = () => {
     });
   };
 
+  // Add this new handler
+  const handleOCRToggle = (e) => {
+    const useOCR = e.target.checked;
+    setFormData({
+      ...formData,
+      mode: useOCR ? 'ocr+llm' : 'llm'
+    });
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -290,8 +299,8 @@ const AgentDetails = () => {
               </Badge>
               <Text fontSize="sm" color="gray.500" mt={2}>
                 {agent.mode === 'ocr+llm'
-                  ? 'Uses AWS Textract for OCR + GPT-4 for validation'
-                  : 'Uses GPT-4 Vision API only (faster)'}
+                  ? 'Uses AWS Textract for OCR + LLM for validation'
+                  : 'Uses LLM Vision API only (faster)'}
               </Text>
             </Box>
           </VStack>
@@ -327,7 +336,7 @@ const AgentDetails = () => {
                 />
               </FormControl>
 
-              <FormControl>
+              {/* <FormControl>
                 <FormLabel>Processing Mode</FormLabel>
                 <Select
                   value={formData.mode}
@@ -338,6 +347,23 @@ const AgentDetails = () => {
                   <option value="ocr+llm">OCR + LLM</option>
                   <option value="llm">LLM Only</option>
                 </Select>
+              </FormControl> */}
+
+              <FormControl>
+                <FormLabel htmlFor="ocr-toggle-edit">
+                  <HStack spacing={3}>
+                    <span>Use OCR</span>
+                    <Switch
+                      id="ocr-toggle-edit"
+                      isChecked={formData.mode === 'ocr+llm'}
+                      onChange={handleOCRToggle}
+                      colorScheme="blue"
+                    />
+                  </HStack>
+                </FormLabel>
+                <Text fontSize="sm" color="gray.500" mt={2}>
+                  Enable OCR (AWS Textract) for scanned documents. Leave off for faster LLM-only processing.
+                </Text>
               </FormControl>
 
               <FormControl display="flex" alignItems="center">
