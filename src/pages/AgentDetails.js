@@ -54,7 +54,16 @@ import MainLayout from '../components/Layout/MainLayout';
 import { getAgent, updateAgent, deleteAgent } from '../services/api';
 import { getModeColor, formatNumber, formatDate } from '../utils/helpers';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
+// const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
+let API_BASE_URL;
+
+if (process.env.NODE_ENV === 'development') {
+  // Local dev: use .env value
+  API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
+} else {
+  // Production: proxy through frontend domain
+  API_BASE_URL = '/api';
+}
 
 const AgentDetails = () => {
   const { agentName } = useParams();
