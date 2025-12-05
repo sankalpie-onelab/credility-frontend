@@ -262,7 +262,7 @@ const AgentDetails = () => {
               </Text>
               <HStack>
                 <Code p={3} borderRadius="md" flex={1}>
-                  {API_BASE_URL}/{agent.endpoint}
+                  {API_BASE_URL}{agent.endpoint}
                 </Code>
                 <Button leftIcon={<Icon as={FiCopy} />} onClick={copyEndpoint}>
                   Copy
