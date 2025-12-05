@@ -23,6 +23,7 @@ import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
 import AgentCard from '../components/Agent/AgentCard';
 import CreateAgentModal from '../components/Agent/CreateAgentModal';
+import HowItWorksModal from '../components/HowItWorks/HowItWorksModal';
 import { listAgents, getCreatorStats } from '../services/api';
 import { getCreatorId } from '../utils/storage';
 import { formatNumber } from '../utils/helpers';
@@ -31,6 +32,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isHowItWorksOpen, onOpen: onHowItWorksOpen, onClose: onHowItWorksClose } = useDisclosure();
   const [agents, setAgents] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -92,13 +94,23 @@ const Dashboard = () => {
         <Box>
           <HStack justify="space-between" mb={2}>
             <Heading size="lg">Dashboard</Heading>
-            <Button
-              leftIcon={<Icon as={FiPlus} />}
-              colorScheme="blue"
-              onClick={onOpen}
-            >
-              Create Agent
-            </Button>
+            <HStack spacing={3}>
+              <Button
+                variant="outline"
+                colorScheme="blue"
+                size="md"
+                onClick={onHowItWorksOpen}
+              >
+                See How It Works
+              </Button>
+              <Button
+                leftIcon={<Icon as={FiPlus} />}
+                colorScheme="blue"
+                onClick={onOpen}
+              >
+                Create Agent
+              </Button>
+            </HStack>
           </HStack>
           <Text color="gray.500">
             Manage your custom validation agents and view analytics
@@ -236,6 +248,8 @@ const Dashboard = () => {
         onClose={onClose}
         onSuccess={handleAgentCreated}
       />
+
+      <HowItWorksModal isOpen={isHowItWorksOpen} onClose={onHowItWorksClose} />
     </MainLayout>
   );
 };

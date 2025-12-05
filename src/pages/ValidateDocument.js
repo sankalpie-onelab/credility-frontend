@@ -138,7 +138,7 @@ const ValidateDocument = () => {
 
       toast({
         title: 'Validation complete',
-        description: `Document ${validationResult.status}: ${validationResult.score}/100`,
+        description: `Document ${validationResult.status} with score: ${validationResult.score}/100`,
         status: validationResult.status === 'pass' ? 'success' : 'error',
         duration: 5000,
         isClosable: true,
@@ -338,14 +338,68 @@ const ValidateDocument = () => {
 
               <Box>
                 <Text fontWeight="bold" mb={2}>
-                  Validation Reasons:
+                  Validation Details:
                 </Text>
-                <VStack align="stretch" spacing={2}>
-                  {result.reason?.map((reason, index) => (
-                    <Text key={index} fontSize="sm">
-                      • {reason}
-                    </Text>
-                  ))}
+                <VStack align="stretch" spacing={3}>
+                  {/* Pass Conditions */}
+                  {result.reason?.pass_conditions?.length > 0 && (
+                    <Box>
+                      <Text fontWeight="semibold" fontSize="sm" color="green.600" mb={1}>
+                        ✅ Passed Conditions:
+                      </Text>
+                      <VStack align="stretch" spacing={1} pl={4}>
+                        {result.reason.pass_conditions.map((condition, index) => (
+                          <Text key={index} fontSize="sm">
+                            {condition}
+                          </Text>
+                        ))}
+                      </VStack>
+                    </Box>
+                  )}
+
+                  {/* Fail Conditions */}
+                  {result.reason?.fail_conditions?.length > 0 && (
+                    <Box>
+                      <Text fontWeight="semibold" fontSize="sm" color="red.600" mb={1}>
+                        ❌ Failed Conditions:
+                      </Text>
+                      <VStack align="stretch" spacing={1} pl={4}>
+                        {result.reason.fail_conditions.map((condition, index) => (
+                          <Text key={index} fontSize="sm">
+                            {condition}
+                          </Text>
+                        ))}
+                      </VStack>
+                    </Box>
+                  )}
+
+                  {/* User Questions */}
+                  {result.reason?.user_questions?.length > 0 && (
+                    <Box>
+                      <Text fontWeight="semibold" fontSize="sm" color="blue.600" mb={1}>
+                        💬 Questions & Answers:
+                      </Text>
+                      <VStack align="stretch" spacing={1} pl={4}>
+                        {result.reason.user_questions.map((qa, index) => (
+                          <Text key={index} fontSize="sm">
+                            {qa}
+                          </Text>
+                        ))}
+                      </VStack>
+                    </Box>
+                  )}
+
+                  {/* Score Explanation */}
+                  {result.reason?.score_explanation && (
+                    <Box>
+                      <Text fontWeight="semibold" fontSize="sm" color="gray.600" mb={1}>
+                        📊 Score Breakdown:
+                      </Text>
+                      <Text fontSize="sm" pl={4}>
+                        {result.reason.score_explanation}
+                      </Text>
+                    </Box>
+                  )}
                 </VStack>
               </Box>
 

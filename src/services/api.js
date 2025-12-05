@@ -11,7 +11,11 @@ const api = axios.create({
 
 // Agent Management APIs
 export const createAgent = async (agentData) => {
-  const response = await api.post('/api/agents/create', agentData);
+  const response = await api.post('/api/agents/create', agentData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };
 

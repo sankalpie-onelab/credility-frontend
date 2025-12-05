@@ -32,7 +32,7 @@ const AgentCard = ({ agent }) => {
       transition="all 0.2s"
     >
       <VStack align="stretch" spacing={3}>
-        <Flex align="start">
+        <Flex align="start" flexDir="column">
           <VStack align="start" spacing={1} flex={1}>
             <Heading size="md">{agent.display_name}</Heading>
             <Text fontSize="sm" color="gray.500" fontFamily="mono">
@@ -43,6 +43,7 @@ const AgentCard = ({ agent }) => {
             <Badge colorScheme={getModeColor(agent.mode)}>
               {agent.mode}
             </Badge>
+            
             {agent.is_active ? (
               <Badge colorScheme="green" display="flex" alignItems="center" gap={1}>
                 <Icon as={FiCheckCircle} /> Active
@@ -85,7 +86,7 @@ const AgentCard = ({ agent }) => {
             onClick={() => navigate(`/agent/${agent.agent_name}`)}
             flex={1}
           >
-            View Details
+            Details
           </Button>
           <Button
             size="sm"

@@ -23,10 +23,13 @@ import { createAgent } from '../services/api';
 import { getCreatorId } from '../utils/storage';
 import { validateAgentName } from '../utils/helpers';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+
 const CreateAgent = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
+  const [referenceImage, setReferenceImage] = useState(null); // Add this line
   const [formData, setFormData] = useState({
     agent_name: '',
     display_name: '',
@@ -42,6 +45,14 @@ const CreateAgent = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  // Add this new function
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setReferenceImage(file);
     }
   };
 
@@ -63,6 +74,11 @@ const CreateAgent = () => {
       newErrors.prompt = 'Prompt must be at least 10 characters';
     }
 
+    // Add this validation
+    // if (!referenceImage) {
+    //   newErrors.reference_image = 'Reference image is required';
+    // }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -74,14 +90,24 @@ const CreateAgent = () => {
     setLoading(true);
     try {
       const creatorId = getCreatorId();
-      const result = await createAgent({
-        ...formData,
-        creator_id: creatorId,
-      });
+      // Create FormData object
+      const submitData = new FormData();
+      submitData.append('agent_name', formData.agent_name);
+      submitData.append('display_name', formData.display_name);
+      submitData.append('prompt', formData.prompt);
+      submitData.append('mode', formData.mode);
+      submitData.append('creator_id', creatorId);
+
+      // Only append reference_image if one was selected
+      if (referenceImage) {
+        submitData.append('reference_image', referenceImage);
+      }
+
+      const result = await createAgent(submitData);
 
       toast({
         title: 'Agent created successfully!',
-        description: `Agent "${result.agent_name}" is ready to use.`,
+        description: result.message || `Agent "${result.agent_name}" is ready to use.`,
         status: 'success',
         duration: 5000,
         isClosable: true,
@@ -178,6 +204,31 @@ const CreateAgent = () => {
                 )}
               </FormControl>
 
+              {/* Add this new FormControl */}
+              <FormControl isInvalid={!!errors.reference_image}>
+                <FormLabel>
+                  Reference Document Image <Text as="span" color="gray.500" fontSize="sm">(Optional)</Text>
+                </FormLabel>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  size="lg"
+                  p={1}
+                />
+                <FormHelperText>
+                  Upload a reference image of the document type for the agent to learn from (JPG, PNG)
+                </FormHelperText>
+                {referenceImage && (
+                  <Text fontSize="sm" color="green.500" mt={2}>
+                    ✓ Selected: {referenceImage.name}
+                  </Text>
+                )}
+                {errors.reference_image && (
+                  <FormErrorMessage>{errors.reference_image}</FormErrorMessage>
+                )}
+              </FormControl>
+
               <FormControl>
                 <FormLabel>Processing Mode</FormLabel>
                 <Select
@@ -206,7 +257,7 @@ const CreateAgent = () => {
                   Your agent will be available at:
                 </Text>
                 <Code p={3} borderRadius="md" w="full" display="block">
-                  POST /api/agent/{formData.agent_name || 'your_agent_name'}
+                  POST {API_BASE_URL}/api/agent/{formData.agent_name || 'your_agent_name'}
                   /validate
                 </Code>
               </Box>

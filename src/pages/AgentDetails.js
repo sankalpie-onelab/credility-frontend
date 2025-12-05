@@ -54,6 +54,8 @@ import MainLayout from '../components/Layout/MainLayout';
 import { getAgent, updateAgent, deleteAgent } from '../services/api';
 import { getModeColor, formatNumber, formatDate } from '../utils/helpers';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+
 const AgentDetails = () => {
   const { agentName } = useParams();
   const navigate = useNavigate();
@@ -260,7 +262,7 @@ const AgentDetails = () => {
               </Text>
               <HStack>
                 <Code p={3} borderRadius="md" flex={1}>
-                  {agent.endpoint}
+                  {API_BASE_URL}/{agent.endpoint}
                 </Code>
                 <Button leftIcon={<Icon as={FiCopy} />} onClick={copyEndpoint}>
                   Copy
