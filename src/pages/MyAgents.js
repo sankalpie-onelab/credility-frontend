@@ -24,8 +24,10 @@ import AgentCard from '../components/Agent/AgentCard';
 import CreateAgentModal from '../components/Agent/CreateAgentModal';
 import { listAgents } from '../services/api';
 import { getCreatorId } from '../utils/storage';
+import { useNavigate } from 'react-router-dom';
 
 const MyAgents = () => {
+  const navigate = useNavigate();
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [agents, setAgents] = useState([]);
@@ -111,7 +113,8 @@ const MyAgents = () => {
             <Button
               leftIcon={<Icon as={FiPlus} />}
               colorScheme="blue"
-              onClick={onOpen}
+              // onClick={onOpen}
+              onClick={()=>navigate('/create-agent')}
             >
               Create Agent
             </Button>

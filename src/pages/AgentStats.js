@@ -127,13 +127,13 @@ const AgentStats = () => {
             borderColor={borderColor}
           >
             <Stat>
-              <StatLabel>Success Rate</StatLabel>
-              <StatNumber color="green.500">
-                {(parseFloat(stats.success_rate) || 0).toFixed(1)}%
+              <StatLabel>Hits Today</StatLabel>
+              <StatNumber color="gray.800">
+                {(formatNumber(stats.today.hits) || 0)}
               </StatNumber>
-              <StatHelpText>
-                {formatNumber(stats.pass_count)} passed
-              </StatHelpText>
+              {/* <StatHelpText>
+                Hits today
+              </StatHelpText> */}
             </Stat>
           </Box>
 
@@ -167,7 +167,7 @@ const AgentStats = () => {
         </SimpleGrid>
 
         {/* Pass/Fail/Error Stats */}
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+        {/* <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
           <Box
             bg={bg}
             p={6}
@@ -221,7 +221,7 @@ const AgentStats = () => {
               </StatHelpText>
             </Stat>
           </Box>
-        </SimpleGrid>
+        </SimpleGrid> */}
 
         {/* Time-based Stats */}
         <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
@@ -236,12 +236,12 @@ const AgentStats = () => {
               <Text fontSize="2xl" fontWeight="bold">
                 {formatNumber(stats.today?.hits || 0)}
               </Text>
-              <HStack spacing={4} mt={2}>
+              {/* <HStack spacing={4} mt={2}>
                 <Badge colorScheme="green">
                   {stats.today?.pass || 0} pass
                 </Badge>
                 <Badge colorScheme="red">{stats.today?.fail || 0} fail</Badge>
-              </HStack>
+              </HStack> */}
             </Box>
 
             <Box>
@@ -251,12 +251,12 @@ const AgentStats = () => {
               <Text fontSize="2xl" fontWeight="bold">
                 {formatNumber(stats.this_week?.hits || 0)}
               </Text>
-              <HStack spacing={4} mt={2}>
+              {/* <HStack spacing={4} mt={2}>
                 <Badge colorScheme="green">
                   {stats.this_week?.pass || 0} pass
                 </Badge>
                 <Badge colorScheme="red">{stats.this_week?.fail || 0} fail</Badge>
-              </HStack>
+              </HStack> */}
             </Box>
 
             <Box>
@@ -266,12 +266,12 @@ const AgentStats = () => {
               <Text fontSize="2xl" fontWeight="bold">
                 {formatNumber(stats.this_month?.hits || 0)}
               </Text>
-              <HStack spacing={4} mt={2}>
+              {/* <HStack spacing={4} mt={2}>
                 <Badge colorScheme="green">
                   {stats.this_month?.pass || 0} pass
                 </Badge>
                 <Badge colorScheme="red">{stats.this_month?.fail || 0} fail</Badge>
-              </HStack>
+              </HStack> */}
             </Box>
           </SimpleGrid>
         </Box>
@@ -299,9 +299,9 @@ const AgentStats = () => {
                   <Tr>
                     <Th>User ID</Th>
                     <Th isNumeric>Requests</Th>
-                    <Th isNumeric>Pass</Th>
-                    <Th isNumeric>Fail</Th>
-                    <Th isNumeric>Errors</Th>
+                    <Th isNumeric>No. Passed Docs</Th>
+                    <Th isNumeric>No. Fail Docs</Th>
+                    {/* <Th isNumeric>Errors</Th> */}
                     <Th>Last Used</Th>
                   </Tr>
                 </Thead>
@@ -320,9 +320,9 @@ const AgentStats = () => {
                       <Td isNumeric>
                         <Badge colorScheme="red">{user.fail_count}</Badge>
                       </Td>
-                      <Td isNumeric>
+                      {/* <Td isNumeric>
                         <Badge colorScheme="orange">{user.error_count}</Badge>
-                      </Td>
+                      </Td> */}
                       <Td fontSize="xs">
                         {new Date(user.last_used).toLocaleDateString()}
                       </Td>

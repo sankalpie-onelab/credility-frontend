@@ -30,8 +30,9 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     agent_name: '',
     display_name: '',
-    prompt: '',
-    mode: 'llm',
+    description: '',
+    OCR: false,
+    tamper: false,
   });
   const [errors, setErrors] = useState({});
 
@@ -49,7 +50,16 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
     const useOCR = e.target.checked;
     setFormData((prev) => ({
       ...prev,
-      mode: useOCR ? 'ocr+llm' : 'llm'
+      OCR: useOCR
+    }));
+  };
+
+  // Add tamper toggle handler
+  const handleTamperToggle = (e) => {
+    const useTamper = e.target.checked;
+    setFormData((prev) => ({
+      ...prev,
+      tamper: useTamper
     }));
   };
 
@@ -67,8 +77,8 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
       newErrors.display_name = 'Display name must be at least 3 characters';
     }
 
-    if (!formData.prompt || formData.prompt.trim().length < 10) {
-      newErrors.prompt = 'Prompt must be at least 10 characters';
+    if (!formData.description || formData.description.trim().length < 10) {
+      newErrors.description = 'Description must be at least 10 characters';
     }
 
     setErrors(newErrors);
@@ -82,8 +92,12 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
     try {
       const creatorId = getCreatorId();
       const result = await createAgent({
-        ...formData,
+        agent_name: formData.agent_name,
+        display_name: formData.display_name,
+        description: formData.description,  // Changed from prompt
+        OCR: formData.OCR,  // Changed from mode
         creator_id: creatorId,
+        tamper: formData.tamper,  // New field
       });
 
       toast({
@@ -98,8 +112,9 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
       setFormData({
         agent_name: '',
         display_name: '',
-        prompt: '',
-        mode: 'llm',
+        description: '',  // Changed from prompt
+        OCR: false,       // Changed from mode
+        tamper: false,    // New field
       });
       setErrors({});
       onSuccess && onSuccess(result);
@@ -155,11 +170,11 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
               )}
             </FormControl>
 
-            <FormControl isInvalid={!!errors.prompt} isRequired>
-              <FormLabel>Validation Rules (Prompt)</FormLabel>
+            <FormControl isInvalid={!!errors.description} isRequired>
+              <FormLabel>Validation Rules (Description)</FormLabel>
               <Textarea
-                name="prompt"
-                value={formData.prompt}
+                name="description"  // Changed from prompt
+                value={formData.description}  // Changed from prompt
                 onChange={handleChange}
                 placeholder="Describe the validation rules in natural language..."
                 rows={6}
@@ -167,8 +182,8 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
               <FormHelperText>
                 Define the rules for document validation in natural language
               </FormHelperText>
-              {errors.prompt && (
-                <FormErrorMessage>{errors.prompt}</FormErrorMessage>
+              {errors.description && (  // Changed from prompt
+                <FormErrorMessage>{errors.description}</FormErrorMessage>  // Changed from prompt
               )}
             </FormControl>
 
@@ -187,7 +202,7 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
                   <span>Use OCR</span>
                   <Switch
                     id="ocr-toggle"
-                    isChecked={formData.mode === 'ocr+llm'}
+                    isChecked={formData.OCR}  // Changed from formData.mode === 'ocr+llm'
                     onChange={handleOCRToggle}
                     colorScheme="blue"
                   />
@@ -197,6 +212,24 @@ const CreateAgentModal = ({ isOpen, onClose, onSuccess }) => {
                 Enable OCR (AWS Textract) for scanned documents. Leave off for faster LLM-only processing.
               </FormHelperText>
             </FormControl>
+
+            <FormControl>
+              <FormLabel htmlFor="tamper-toggle">
+                <HStack spacing={3}>
+                  <span>Enable Tamper Detection</span>
+                  <Switch
+                    id="tamper-toggle"
+                    isChecked={formData.tamper}
+                    onChange={handleTamperToggle}
+                    colorScheme="purple"
+                  />
+                </HStack>
+              </FormLabel>
+              <FormHelperText>
+                Enable tamper detection to identify forged or modified documents.
+              </FormHelperText>
+            </FormControl>
+
           </VStack>
         </ModalBody>
 

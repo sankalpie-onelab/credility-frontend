@@ -95,18 +95,19 @@ const Dashboard = () => {
           <HStack justify="space-between" mb={2}>
             <Heading size="lg">Dashboard</Heading>
             <HStack spacing={3}>
-              <Button
+              {/* <Button
                 variant="outline"
                 colorScheme="blue"
                 size="md"
                 onClick={onHowItWorksOpen}
               >
                 See How It Works
-              </Button>
+              </Button> */}
               <Button
                 leftIcon={<Icon as={FiPlus} />}
                 colorScheme="blue"
-                onClick={onOpen}
+                // onClick={onOpen}
+                onClick={()=> navigate("/create-agent")}
               >
                 Create Agent
               </Button>
@@ -132,7 +133,7 @@ const Dashboard = () => {
                 Total Agents
               </StatLabel>
               <StatNumber>
-                {formatNumber(stats?.summary?.total_agents || 0)}
+                {formatNumber(stats?.summary?.total_agents_created || 0)}
               </StatNumber>
               <StatHelpText>
                 {stats?.summary?.active_agents || 0} active
@@ -153,7 +154,7 @@ const Dashboard = () => {
                 Total Requests
               </StatLabel>
               <StatNumber>
-                {formatNumber(stats?.summary?.total_hits_all_agents || 0)}
+                {formatNumber(stats?.summary?.total_api_hits || 0)}
               </StatNumber>
               <StatHelpText>All time</StatHelpText>
             </Stat>
@@ -172,7 +173,7 @@ const Dashboard = () => {
                 This Week
               </StatLabel>
               <StatNumber>
-                {formatNumber(stats?.recent_activity?.this_week || 0)}
+                {formatNumber(stats?.recent_activity?.hits_this_week || 0)}
               </StatNumber>
               <StatHelpText>Requests</StatHelpText>
             </Stat>
@@ -191,7 +192,7 @@ const Dashboard = () => {
                 Today
               </StatLabel>
               <StatNumber>
-                {formatNumber(stats?.recent_activity?.today || 0)}
+                {formatNumber(stats?.recent_activity?.hits_today || 0)}
               </StatNumber>
               <StatHelpText>Requests</StatHelpText>
             </Stat>

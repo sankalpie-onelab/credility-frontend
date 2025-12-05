@@ -15,9 +15,11 @@ export const getCreatorId = () => {
   let creatorId = localStorage.getItem(CREATOR_ID_KEY);
   if (!creatorId) {
     creatorId = generateId('creator');
-    localStorage.setItem(CREATOR_ID_KEY, creatorId);
+    // localStorage.setItem(CREATOR_ID_KEY, creatorId);
+    localStorage.setItem(CREATOR_ID_KEY, "user_111");
   }
-  return creatorId;
+  // return creatorId;
+  return "user_111"
 };
 
 export const setCreatorId = (id) => {
@@ -29,9 +31,11 @@ export const getUserId = () => {
   let userId = localStorage.getItem(USER_ID_KEY);
   if (!userId) {
     userId = generateId('user');
-    localStorage.setItem(USER_ID_KEY, userId);
+    // localStorage.setItem(USER_ID_KEY, userId);
+    localStorage.setItem(USER_ID_KEY, "dev123");
   }
-  return userId;
+  // return userId;
+  return "dev123"
 };
 
 export const setUserId = (id) => {

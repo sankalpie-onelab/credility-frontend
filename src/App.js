@@ -11,6 +11,10 @@ import AgentStats from './pages/AgentStats';
 import ValidateDocument from './pages/ValidateDocument';
 import Analytics from './pages/Analytics';
 
+// Components
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
+
 // Custom theme
 const theme = extendTheme({
   config: {
@@ -49,13 +53,17 @@ function App() {
     <ChakraProvider theme={theme}>
       <Router>
         <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/create-agent" element={<CreateAgent />} />
-          <Route path="/my-agents" element={<MyAgents />} />
-          <Route path="/agent/:agentName" element={<AgentDetails />} />
-          <Route path="/agent/:agentName/stats" element={<AgentStats />} />
-          <Route path="/validate" element={<ValidateDocument />} />
-          <Route path="/analytics" element={<Analytics />} />
+          {/* Public Route */}
+          <Route path="/login" element={<Login />} />
+
+          {/* Protected Routes */}
+          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/create-agent" element={<ProtectedRoute><CreateAgent /></ProtectedRoute>} />
+          <Route path="/my-agents" element={<ProtectedRoute><MyAgents /></ProtectedRoute>} />
+          <Route path="/agent/:agentName" element={<ProtectedRoute><AgentDetails /></ProtectedRoute>} />
+          <Route path="/agent/:agentName/stats" element={<ProtectedRoute><AgentStats /></ProtectedRoute>} />
+          <Route path="/validate" element={<ProtectedRoute><ValidateDocument /></ProtectedRoute>} />
+          <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
         </Routes>
       </Router>
     </ChakraProvider>

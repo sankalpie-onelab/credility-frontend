@@ -85,6 +85,7 @@ const AgentCard = ({ agent }) => {
             leftIcon={<Icon as={FiEye} />}
             onClick={() => navigate(`/agent/${agent.agent_name}`)}
             flex={1}
+            isDisabled={!agent.is_active}
           >
             Details
           </Button>
@@ -94,6 +95,7 @@ const AgentCard = ({ agent }) => {
             variant="outline"
             onClick={() => navigate(`/agent/${agent.agent_name}/stats`)}
             flex={1}
+            isDisabled={!agent.is_active}
           >
             Stats
           </Button>

@@ -54,7 +54,7 @@ import MainLayout from '../components/Layout/MainLayout';
 import { getAgent, updateAgent, deleteAgent } from '../services/api';
 import { getModeColor, formatNumber, formatDate } from '../utils/helpers';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
 
 const AgentDetails = () => {
   const { agentName } = useParams();
@@ -218,13 +218,13 @@ const AgentDetails = () => {
               >
                 View Stats
               </Button>
-              <Button
+              {/* <Button
                 leftIcon={<Icon as={FiEdit} />}
                 variant="outline"
                 onClick={onEditOpen}
               >
                 Edit
-              </Button>
+              </Button> */}
               <Button
                 leftIcon={<Icon as={FiTrash2} />}
                 variant="outline"

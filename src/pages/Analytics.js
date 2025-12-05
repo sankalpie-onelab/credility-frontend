@@ -32,7 +32,7 @@ import {
   IconButton,
   Tooltip,
 } from '@chakra-ui/react';
-import { FiLayers, FiActivity, FiBarChart2, FiTrendingUp, FiSearch, FiX, FiEye } from 'react-icons/fi';
+import { FiLayers, FiActivity, FiBarChart2, FiTrendingUp, FiSearch, FiX, FiEye, FiUsers } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
 import { getCreatorStats, getAgentUsers } from '../services/api';
@@ -68,8 +68,8 @@ const Analytics = () => {
       const data = await getCreatorStats(creatorId);
       setStats(data);
       // Fetch users for all agents and aggregate
-      if (data.agents && data.agents.length > 0) {
-        await fetchAllUsers(data.agents);
+      if (data.agents_breakdown && data.agents_breakdown.length > 0) {
+        await fetchAllUsers(data.agents_breakdown);
       }
     } catch (error) {
       toast({
@@ -139,9 +139,9 @@ const Analytics = () => {
 
   // Filter and sort agents
   const filteredAndSortedAgents = useMemo(() => {
-    if (!stats?.agents) return [];
+    if (!stats?.agents_breakdown) return [];
 
-    let filtered = [...stats.agents];
+    let filtered = [...stats.agents_breakdown];
 
     // Apply search filter
     if (searchTerm) {
@@ -156,7 +156,7 @@ const Analytics = () => {
     // Apply status filter
     if (statusFilter !== 'all') {
       const isActive = statusFilter === 'active';
-      filtered = filtered.filter((agent) => agent.is_active === isActive);
+      filtered = filtered.filter((agent) => agent.is_active === (isActive ? 1 : 0));
     }
 
     // Apply sorting
@@ -176,7 +176,7 @@ const Analytics = () => {
     });
 
     return filtered;
-  }, [stats?.agents, searchTerm, statusFilter, sortBy]);
+  }, [stats?.agents_breakdown, searchTerm, statusFilter, sortBy]);
 
   const handleClearFilters = () => {
     setSearchTerm('');
@@ -268,7 +268,7 @@ const Analytics = () => {
                 Total Agents
               </StatLabel>
               <StatNumber>
-                {formatNumber(stats.summary?.total_agents || 0)}
+                {formatNumber(stats.summary?.total_agents_created || 0)}
               </StatNumber>
               <StatHelpText>
                 {stats.summary?.active_agents || 0} active
@@ -289,7 +289,7 @@ const Analytics = () => {
                 Total Requests
               </StatLabel>
               <StatNumber>
-                {formatNumber(stats.summary?.total_hits_all_agents || 0)}
+                {formatNumber(stats.summary?.total_api_hits || 0)}
               </StatNumber>
               <StatHelpText>All time</StatHelpText>
             </Stat>
@@ -304,13 +304,13 @@ const Analytics = () => {
           >
             <Stat>
               <StatLabel display="flex" alignItems="center" gap={2}>
-                <Icon as={FiActivity} color="purple.500" />
-                This Week
+                <Icon as={FiUsers} color="purple.500" />
+                Unique Users
               </StatLabel>
               <StatNumber>
-                {formatNumber(stats.recent_activity?.this_week || 0)}
+                {formatNumber(stats.summary?.total_unique_users || 0)}
               </StatNumber>
-              <StatHelpText>Requests</StatHelpText>
+              <StatHelpText>All agents</StatHelpText>
             </Stat>
           </Box>
 
@@ -327,15 +327,15 @@ const Analytics = () => {
                 Today
               </StatLabel>
               <StatNumber>
-                {formatNumber(stats.recent_activity?.today || 0)}
+                {formatNumber(stats.recent_activity?.hits_today || 0)}
               </StatNumber>
               <StatHelpText>Requests</StatHelpText>
             </Stat>
           </Box>
         </SimpleGrid>
 
-        {/* Time-based Activity */}
-        {/* <Box
+        {/* Recent Activity */}
+        <Box
           bg={bg}
           p={6}
           borderRadius="lg"
@@ -351,7 +351,7 @@ const Analytics = () => {
                 Today
               </Text>
               <Text fontSize="4xl" fontWeight="bold" color="blue.500">
-                {formatNumber(stats.recent_activity?.today || 0)}
+                {formatNumber(stats.recent_activity?.hits_today || 0)}
               </Text>
               <Text fontSize="sm" color="gray.500" mt={2}>
                 requests
@@ -363,7 +363,7 @@ const Analytics = () => {
                 This Week
               </Text>
               <Text fontSize="4xl" fontWeight="bold" color="purple.500">
-                {formatNumber(stats.recent_activity?.this_week || 0)}
+                {formatNumber(stats.recent_activity?.hits_this_week || 0)}
               </Text>
               <Text fontSize="sm" color="gray.500" mt={2}>
                 requests
@@ -375,14 +375,14 @@ const Analytics = () => {
                 This Month
               </Text>
               <Text fontSize="4xl" fontWeight="bold" color="green.500">
-                {formatNumber(stats.recent_activity?.this_month || 0)}
+                {formatNumber(stats.recent_activity?.hits_this_month || 0)}
               </Text>
               <Text fontSize="sm" color="gray.500" mt={2}>
                 requests
               </Text>
             </Box>
           </SimpleGrid>
-        </Box> */}
+        </Box>
 
         {/* Agent Performance Table */}
         <Box
@@ -406,7 +406,7 @@ const Analytics = () => {
             </HStack>
 
             {/* Filters and Search */}
-            {stats.agents && stats.agents.length > 0 && (
+            {stats.agents_breakdown && stats.agents_breakdown.length > 0 && (
               <Flex
                 gap={4}
                 direction={{ base: 'column', md: 'row' }}
@@ -460,14 +460,14 @@ const Analytics = () => {
             )}
 
             {/* Results count */}
-            {stats.agents && stats.agents.length > 0 && (
+            {stats.agents_breakdown && stats.agents_breakdown.length > 0 && (
               <Text fontSize="sm" color="gray.500">
-                Showing {filteredAndSortedAgents.length} of {stats.agents.length} agents
+                Showing {filteredAndSortedAgents.length} of {stats.agents_breakdown.length} agents
               </Text>
             )}
 
             {/* Table */}
-            {!stats.agents || stats.agents.length === 0 ? (
+            {!stats.agents_breakdown || stats.agents_breakdown.length === 0 ? (
               <Text color="gray.500" textAlign="center" py={8}>
                 No agents yet. Create your first agent to see analytics.
               </Text>
@@ -483,16 +483,14 @@ const Analytics = () => {
                       <Th>Agent Name</Th>
                       <Th>Display Name</Th>
                       <Th isNumeric>Total Hits</Th>
+                      <Th isNumeric>Unique Users</Th>
                       <Th>Status</Th>
                       <Th>Actions</Th>
                     </Tr>
                   </Thead>
                   <Tbody>
                     {filteredAndSortedAgents.map((agent) => (
-                      <Tr
-                        key={agent.agent_name}
-                      // _hover={{ bg: useColorModeValue('gray.50', 'gray.600') }}
-                      >
+                      <Tr key={agent.agent_name}>
                         <Td fontFamily="mono" fontSize="sm">
                           {agent.agent_name}
                         </Td>
@@ -500,8 +498,11 @@ const Analytics = () => {
                         <Td isNumeric fontWeight="bold">
                           {formatNumber(agent.total_hits)}
                         </Td>
+                        <Td isNumeric>
+                          {formatNumber(agent.unique_users || 0)}
+                        </Td>
                         <Td>
-                          {agent.is_active ? (
+                          {agent.is_active === 1 ? (
                             <Badge colorScheme="green">Active</Badge>
                           ) : (
                             <Badge colorScheme="red">Inactive</Badge>
@@ -693,4 +694,3 @@ const Analytics = () => {
 };
 
 export default Analytics;
-

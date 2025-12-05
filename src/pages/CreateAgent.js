@@ -25,7 +25,7 @@ import { createAgent } from '../services/api';
 import { getCreatorId } from '../utils/storage';
 import { validateAgentName } from '../utils/helpers';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
 
 const CreateAgent = () => {
   const navigate = useNavigate();
@@ -35,8 +35,9 @@ const CreateAgent = () => {
   const [formData, setFormData] = useState({
     agent_name: '',
     display_name: '',
-    prompt: '',
-    mode: 'llm',
+    description: '',
+    OCR: false,
+    tamper: false,
   });
   const [errors, setErrors] = useState({});
   const bg = useColorModeValue('white', 'gray.700');
@@ -55,7 +56,16 @@ const CreateAgent = () => {
     const useOCR = e.target.checked;
     setFormData((prev) => ({
       ...prev,
-      mode: useOCR ? 'ocr+llm' : 'llm'
+      OCR: useOCR
+    }));
+  };
+
+  // Add tamper toggle handler after handleOCRToggle
+  const handleTamperToggle = (e) => {
+    const useTamper = e.target.checked;
+    setFormData((prev) => ({
+      ...prev,
+      tamper: useTamper
     }));
   };
 
@@ -81,8 +91,8 @@ const CreateAgent = () => {
       newErrors.display_name = 'Display name must be at least 3 characters';
     }
 
-    if (!formData.prompt || formData.prompt.trim().length < 10) {
-      newErrors.prompt = 'Prompt must be at least 10 characters';
+    if (!formData.description || formData.description.trim().length < 10) {
+      newErrors.description = 'Description must be at least 10 characters';
     }
 
     // Add this validation
@@ -105,9 +115,10 @@ const CreateAgent = () => {
       const submitData = new FormData();
       submitData.append('agent_name', formData.agent_name);
       submitData.append('display_name', formData.display_name);
-      submitData.append('prompt', formData.prompt);
-      submitData.append('mode', formData.mode);
+      submitData.append('description', formData.description);
+      submitData.append('OCR', formData.OCR);
       submitData.append('creator_id', creatorId);
+      submitData.append('tamper', formData.tamper);
 
       // Only append reference_image if one was selected
       if (referenceImage) {
@@ -196,11 +207,11 @@ const CreateAgent = () => {
                 )}
               </FormControl>
 
-              <FormControl isInvalid={!!errors.prompt} isRequired>
-                <FormLabel>Validation Rules (Prompt)</FormLabel>
+              <FormControl isInvalid={!!errors.description} isRequired>
+                <FormLabel>Validation Rules (Description)</FormLabel>
                 <Textarea
-                  name="prompt"
-                  value={formData.prompt}
+                  name="description"  // Changed from prompt
+                  value={formData.description}  // Changed from prompt
                   onChange={handleChange}
                   placeholder="Example: Pass the document only if: 1) User age is above 54 years, 2) Document is not expired, 3) ID number has exactly 10 digits"
                   rows={8}
@@ -210,8 +221,8 @@ const CreateAgent = () => {
                   Describe your validation rules in natural language. Be specific
                   about what conditions must be met for a document to pass.
                 </FormHelperText>
-                {errors.prompt && (
-                  <FormErrorMessage>{errors.prompt}</FormErrorMessage>
+                {errors.description && (  // Changed from prompt
+                  <FormErrorMessage>{errors.description}</FormErrorMessage>  // Changed from prompt
                 )}
               </FormControl>
 
@@ -267,7 +278,7 @@ const CreateAgent = () => {
                     <span>Use OCR</span>
                     <Switch
                       id="ocr-toggle-page"
-                      isChecked={formData.mode === 'ocr+llm'}
+                      isChecked={formData.OCR}  // Changed from formData.mode === 'ocr+llm'
                       onChange={handleOCRToggle}
                       colorScheme="blue"
                       size="lg"
@@ -278,6 +289,26 @@ const CreateAgent = () => {
                   <strong>Enabled:</strong> Uses AWS Textract for text extraction + LLM for validation (recommended for scanned documents).
                   <br />
                   <strong>Disabled:</strong> Uses LLM Vision API only (faster for clear images).
+                </FormHelperText>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel htmlFor="tamper-toggle-page">
+                  <HStack spacing={3}>
+                    <span>Enable Tamper Detection</span>
+                    <Switch
+                      id="tamper-toggle-page"
+                      isChecked={formData.tamper}
+                      onChange={handleTamperToggle}
+                      colorScheme="purple"
+                      size="lg"
+                    />
+                  </HStack>
+                </FormLabel>
+                <FormHelperText>
+                  <strong>Enabled:</strong> Performs additional checks to detect if the document has been tampered with or forged.
+                  <br />
+                  <strong>Disabled:</strong> Skips tamper detection (faster processing).
                 </FormHelperText>
               </FormControl>
 

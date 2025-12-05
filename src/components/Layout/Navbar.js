@@ -13,12 +13,14 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
+  MenuDivider,
   Text,
   Image
 } from '@chakra-ui/react';
-import { FiMoon, FiSun, FiMenu, FiUser } from 'react-icons/fi';
+import { FiMoon, FiSun, FiMenu, FiUser, FiLogOut } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { getCreatorId } from '../../utils/storage';
+import { logout, getAuthData } from '../../utils/auth';
 import logo from "../../assets/credility_logo.png";
 
 const Navbar = ({ onMenuClick }) => {
@@ -27,6 +29,12 @@ const Navbar = ({ onMenuClick }) => {
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   const navigate = useNavigate();
   const creatorId = getCreatorId();
+  const authData = getAuthData();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <Box
@@ -71,10 +79,30 @@ const Navbar = ({ onMenuClick }) => {
               size="sm"
             >
               <Text display={{ base: 'none', md: 'block' }}>
-                {creatorId.substring(0, 15)}...
+                {authData?.email || creatorId.substring(0, 15) + '...'}
               </Text>
             </MenuButton>
             <MenuList>
+              {authData && (
+                <>
+                  <MenuItem isDisabled>
+                    <Text fontSize="xs" color="gray.500">
+                      Email
+                    </Text>
+                  </MenuItem>
+                  <MenuItem isDisabled>
+                    <Text fontSize="xs">
+                      {authData.email}
+                    </Text>
+                  </MenuItem>
+                  <MenuItem isDisabled>
+                    <Text fontSize="xs" color="gray.500">
+                      Role: {authData.role}
+                    </Text>
+                  </MenuItem>
+                  <MenuDivider />
+                </>
+              )}
               <MenuItem isDisabled>
                 <Text fontSize="xs" color="gray.500">
                   Creator ID
@@ -84,6 +112,10 @@ const Navbar = ({ onMenuClick }) => {
                 <Text fontSize="xs" fontFamily="mono">
                   {creatorId}
                 </Text>
+              </MenuItem>
+              <MenuDivider />
+              <MenuItem icon={<FiLogOut />} onClick={handleLogout} color="red.500">
+                Logout
               </MenuItem>
             </MenuList>
           </Menu>
@@ -101,4 +133,3 @@ const Navbar = ({ onMenuClick }) => {
 };
 
 export default Navbar;
-
