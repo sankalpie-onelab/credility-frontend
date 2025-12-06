@@ -403,6 +403,129 @@ const ValidateDocument = () => {
                 </VStack>
               </Box>
 
+              {/* Tampering Detection - NEW SECTION */}
+              {result.tampering_status && (
+                <>
+                  <Divider />
+
+                  <Box>
+                    <HStack justify="space-between" mb={3}>
+                      <Text fontWeight="bold">
+                        Tampering Detection:
+                      </Text>
+                      <HStack>
+                        <Badge
+                          colorScheme={result.tampering_status === 'pass' ? 'green' : 'red'}
+                          fontSize="md"
+                          px={3}
+                          py={1}
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                        >
+                          <Icon
+                            as={result.tampering_status === 'pass' ? FiCheckCircle : FiXCircle}
+                          />
+                          {result.tampering_status.toUpperCase()}
+                        </Badge>
+                        <Badge
+                          colorScheme={result.tampering_score > 70 ? 'red' : result.tampering_score > 40 ? 'orange' : 'green'}
+                          fontSize="md"
+                          px={3}
+                          py={1}
+                        >
+                          Risk Score: {result.tampering_score}/100
+                        </Badge>
+                      </HStack>
+                    </HStack>
+
+                    {result.tampering_details && (
+                      <VStack align="stretch" spacing={3}>
+                        {/* Tampering Summary */}
+                        {result.tampering_details.summary && (
+                          <Box
+                            p={3}
+                            bg={result.tampering_details.tampering_detected ? 'red.50' : 'green.50'}
+                            borderRadius="md"
+                            borderWidth="1px"
+                            borderColor={result.tampering_details.tampering_detected ? 'red.200' : 'green.200'}
+                          >
+                            <Text fontSize="sm" fontWeight="semibold" mb={1}>
+                              {result.tampering_details.tampering_detected ? '⚠️' : '✅'} Summary:
+                            </Text>
+                            <Text fontSize="sm">
+                              {result.tampering_details.summary}
+                            </Text>
+                          </Box>
+                        )}
+
+                        {/* Confidence Level */}
+                        {result.tampering_details.confidence && (
+                          <HStack>
+                            <Text fontSize="sm" fontWeight="semibold">
+                              Confidence Level:
+                            </Text>
+                            <Badge
+                              colorScheme={
+                                result.tampering_details.confidence === 'high' ? 'red' :
+                                  result.tampering_details.confidence === 'medium' ? 'orange' : 'yellow'
+                              }
+                            >
+                              {result.tampering_details.confidence.toUpperCase()}
+                            </Badge>
+                          </HStack>
+                        )}
+
+                        {/* Tampering Indicators */}
+                        {result.tampering_details.indicators?.length > 0 && (
+                          <Box>
+                            <Text fontWeight="semibold" fontSize="sm" mb={2}>
+                              🔍 Detected Issues:
+                            </Text>
+                            <VStack align="stretch" spacing={2} pl={4}>
+                              {result.tampering_details.indicators.map((indicator, index) => (
+                                <Box
+                                  key={index}
+                                  p={3}
+                                  bg={dropBg}
+                                  borderRadius="md"
+                                  borderLeftWidth="4px"
+                                  borderLeftColor={
+                                    indicator.severity === 'high' ? 'red.500' :
+                                      indicator.severity === 'medium' ? 'orange.500' : 'yellow.500'
+                                  }
+                                >
+                                  <HStack justify="space-between" mb={1}>
+                                    <Text fontSize="sm" fontWeight="bold">
+                                      {indicator.type.replace(/_/g, ' ').toUpperCase()}
+                                    </Text>
+                                    <Badge
+                                      colorScheme={
+                                        indicator.severity === 'high' ? 'red' :
+                                          indicator.severity === 'medium' ? 'orange' : 'yellow'
+                                      }
+                                      size="sm"
+                                    >
+                                      {indicator.severity}
+                                    </Badge>
+                                  </HStack>
+                                  <Text fontSize="xs" color="gray.600" mb={1}>
+                                    {indicator.description}
+                                  </Text>
+                                  <Text fontSize="xs" color="gray.500">
+                                    Location: {indicator.location}
+                                  </Text>
+                                </Box>
+                              ))}
+                            </VStack>
+                          </Box>
+                        )}
+                      </VStack>
+                    )}
+                  </Box>
+                </>
+              )}
+
               <Divider />
 
               <Box>
