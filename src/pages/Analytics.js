@@ -68,9 +68,9 @@ const Analytics = () => {
       const data = await getCreatorStats(creatorId);
       setStats(data);
       // Fetch users for all agents and aggregate
-      if (data.agents_breakdown && data.agents_breakdown.length > 0) {
-        await fetchAllUsers(data.agents_breakdown);
-      }
+      // if (data.agents_breakdown && data.agents_breakdown.length > 0) {
+      //   await fetchAllUsers(data.agents_breakdown);
+      // }
     } catch (error) {
       toast({
         title: 'Error loading analytics',
@@ -84,58 +84,58 @@ const Analytics = () => {
     }
   };
 
-  const fetchAllUsers = async (agents) => {
-    try {
-      // Fetch users from all agents in parallel
-      const userPromises = agents.map(agent =>
-        getAgentUsers(agent.agent_name, { limit: 1000 })
-          .then(data => ({
-            agentName: agent.agent_name,
-            users: data.users || []
-          }))
-          .catch(() => ({ agentName: agent.agent_name, users: [] }))
-      );
+  // const fetchAllUsers = async (agents) => {
+  //   try {
+  //     // Fetch users from all agents in parallel
+  //     const userPromises = agents.map(agent =>
+  //       getAgentUsers(agent.agent_name, { limit: 1000 })
+  //         .then(data => ({
+  //           agentName: agent.agent_name,
+  //           users: data.users || []
+  //         }))
+  //         .catch(() => ({ agentName: agent.agent_name, users: [] }))
+  //     );
 
-      const agentUsersData = await Promise.all(userPromises);
+  //     const agentUsersData = await Promise.all(userPromises);
 
-      // Aggregate user data
-      const userMap = new Map();
+  //     // Aggregate user data
+  //     const userMap = new Map();
 
-      agentUsersData.forEach(({ agentName, users }) => {
-        users.forEach(user => {
-          if (userMap.has(user.user_id)) {
-            const existing = userMap.get(user.user_id);
-            existing.total_hits += user.total_requests || 0;
-            existing.agents_used.add(agentName);
-            existing.agent_breakdown[agentName] = user.total_requests || 0;
+  //     agentUsersData.forEach(({ agentName, users }) => {
+  //       users.forEach(user => {
+  //         if (userMap.has(user.user_id)) {
+  //           const existing = userMap.get(user.user_id);
+  //           existing.total_hits += user.total_requests || 0;
+  //           existing.agents_used.add(agentName);
+  //           existing.agent_breakdown[agentName] = user.total_requests || 0;
 
-            // Update most used agent if needed
-            if (existing.agent_breakdown[agentName] > (existing.agent_breakdown[existing.most_used_agent] || 0)) {
-              existing.most_used_agent = agentName;
-            }
-          } else {
-            userMap.set(user.user_id, {
-              user_id: user.user_id,
-              total_hits: user.total_requests || 0,
-              agents_used: new Set([agentName]),
-              most_used_agent: agentName,
-              agent_breakdown: { [agentName]: user.total_requests || 0 }
-            });
-          }
-        });
-      });
+  //           // Update most used agent if needed
+  //           if (existing.agent_breakdown[agentName] > (existing.agent_breakdown[existing.most_used_agent] || 0)) {
+  //             existing.most_used_agent = agentName;
+  //           }
+  //         } else {
+  //           userMap.set(user.user_id, {
+  //             user_id: user.user_id,
+  //             total_hits: user.total_requests || 0,
+  //             agents_used: new Set([agentName]),
+  //             most_used_agent: agentName,
+  //             agent_breakdown: { [agentName]: user.total_requests || 0 }
+  //           });
+  //         }
+  //       });
+  //     });
 
-      // Convert to array and transform Set to Array
-      const aggregatedUsers = Array.from(userMap.values()).map(user => ({
-        ...user,
-        agents_used: Array.from(user.agents_used)
-      }));
+  //     // Convert to array and transform Set to Array
+  //     const aggregatedUsers = Array.from(userMap.values()).map(user => ({
+  //       ...user,
+  //       agents_used: Array.from(user.agents_used)
+  //     }));
 
-      setAllUsers(aggregatedUsers);
-    } catch (error) {
-      console.error('Error fetching all users:', error);
-    }
-  };
+  //     setAllUsers(aggregatedUsers);
+  //   } catch (error) {
+  //     console.error('Error fetching all users:', error);
+  //   }
+  // };
 
   // Filter and sort agents
   const filteredAndSortedAgents = useMemo(() => {
@@ -541,7 +541,7 @@ const Analytics = () => {
         </Box>
 
         {/* User Statistics Table */}
-        <Box
+        {/* <Box
           bg={bg}
           p={6}
           borderRadius="lg"
@@ -549,7 +549,7 @@ const Analytics = () => {
           borderColor={borderColor}
         >
           <VStack spacing={4} align="stretch">
-            {/* Header */}
+            
             <HStack justify="space-between">
               <Box>
                 <Heading size="md">User Statistics</Heading>
@@ -559,7 +559,7 @@ const Analytics = () => {
               </Box>
             </HStack>
 
-            {/* Filters and Search */}
+            
             {allUsers && allUsers.length > 0 && (
               <Flex
                 gap={4}
@@ -604,14 +604,14 @@ const Analytics = () => {
               </Flex>
             )}
 
-            {/* Results count */}
+           
             {allUsers && allUsers.length > 0 && (
               <Text fontSize="sm" color="gray.500">
                 Showing {filteredAndSortedUsers.length} of {allUsers.length} users
               </Text>
             )}
 
-            {/* Table */}
+            
             {!allUsers || allUsers.length === 0 ? (
               <Text color="gray.500" textAlign="center" py={8}>
                 No user activity yet. Users will appear here once they start using your agents.
@@ -667,7 +667,7 @@ const Analytics = () => {
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              // Copy user ID to clipboard
+                              
                               navigator.clipboard.writeText(user.user_id);
                               toast({
                                 title: 'User ID copied',
@@ -687,7 +687,7 @@ const Analytics = () => {
               </TableContainer>
             )}
           </VStack>
-        </Box>
+        </Box> */}
       </VStack>
     </MainLayout>
   );
