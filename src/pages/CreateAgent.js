@@ -25,16 +25,16 @@ import { createAgent } from '../services/api';
 import { getCreatorId } from '../utils/storage';
 import { validateAgentName } from '../utils/helpers';
 
-// const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
-let API_BASE_URL;
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
+// let API_BASE_URL;
 
-if (process.env.NODE_ENV === 'development') {
-  // Local dev: use .env value
-  API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
-} else {
-  // Production: proxy through frontend domain
-  API_BASE_URL = '/api';
-}
+// if (process.env.NODE_ENV === 'development') {
+//   // Local dev: use .env value
+//   API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
+// } else {
+//   // Production: proxy through frontend domain
+//   API_BASE_URL = '/api';
+// }
 
 const CreateAgent = () => {
   const navigate = useNavigate();
