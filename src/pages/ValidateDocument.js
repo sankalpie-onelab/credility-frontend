@@ -535,6 +535,69 @@ const ValidateDocument = () => {
                 <Badge>{result.document_type || 'Unknown'}</Badge>
               </Box>
 
+              {/* OCR Extraction Quality - NEW SECTION */}
+              {result.ocr_extraction_status && (
+                <>
+                  <Divider />
+
+                  <Box>
+                    <HStack justify="space-between" mb={3}>
+                      <Text fontWeight="bold">
+                        OCR Extraction Quality:
+                      </Text>
+                      <HStack>
+                        <Badge
+                          colorScheme={result.ocr_extraction_status === 'pass' ? 'green' : 'orange'}
+                          fontSize="md"
+                          px={3}
+                          py={1}
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                        >
+                          <Icon
+                            as={result.ocr_extraction_status === 'pass' ? FiCheckCircle : FiXCircle}
+                          />
+                          {result.ocr_extraction_status.toUpperCase()}
+                        </Badge>
+                        {
+                        /*result.ocr_extraction_confidence !== null && result.ocr_extraction_confidence !== undefined && (
+                          <Badge
+                            colorScheme={
+                              result.ocr_extraction_confidence >= 80 ? 'green' :
+                                result.ocr_extraction_confidence >= 60 ? 'orange' : 'red'
+                            }
+                            fontSize="md"
+                            px={3}
+                            py={1}
+                          >
+                            Confidence: {result.ocr_extraction_confidence.toFixed(1)}%
+                          </Badge>
+                        )
+                          */}
+                      </HStack>
+                    </HStack>
+
+                    {result.ocr_extraction_reason && (
+                      <Box
+                        p={3}
+                        bg={result.ocr_extraction_status === 'pass' ? 'green.50' : 'orange.50'}
+                        borderRadius="md"
+                        borderWidth="1px"
+                        borderColor={result.ocr_extraction_status === 'pass' ? 'green.200' : 'orange.200'}
+                      >
+                        <Text fontSize="sm" fontWeight="semibold" mb={1}>
+                          {result.ocr_extraction_status === 'pass' ? '✅' : '⚠️'} Details:
+                        </Text>
+                        <Text fontSize="sm">
+                          {result.ocr_extraction_reason}
+                        </Text>
+                      </Box>
+                    )}
+                  </Box>
+                </>
+              )}
+
               <Divider />
 
               <Box>
