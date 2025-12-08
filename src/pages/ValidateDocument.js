@@ -229,7 +229,7 @@ const ValidateDocument = () => {
             >
               {agents.map((agent) => (
                 <option key={agent.agent_name} value={agent.agent_name}>
-                  {agent.display_name} ({agent.mode})
+                  {agent.display_name} ({agent.mode === 'ocr+llm' ? 'OCR Enabled' : 'OCR Disabled'})
                 </option>
               ))}
             </Select>

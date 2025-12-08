@@ -295,9 +295,9 @@ const CreateAgent = () => {
                   </HStack>
                 </FormLabel>
                 <FormHelperText>
-                  <strong>Enabled:</strong> Uses AWS Textract for text extraction + LLM for validation (recommended for scanned documents).
+                  <strong>Enabled:</strong> Recommended for scanned documents.
                   <br />
-                  <strong>Disabled:</strong> Uses LLM Vision API only (faster for clear images).
+                  <strong>Disabled:</strong> Faster for clear images.
                 </FormHelperText>
               </FormControl>
 

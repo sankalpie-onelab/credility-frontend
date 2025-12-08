@@ -40,10 +40,10 @@ const AgentCard = ({ agent }) => {
             </Text>
           </VStack>
           <HStack>
-            <Badge colorScheme={getModeColor(agent.mode)}>
-              {agent.mode}
-            </Badge>
-            
+            {/* <Badge colorScheme={agent.mode === 'ocr+llm' ? 'blue' : 'gray'}>
+              OCR: {agent.mode === 'ocr+llm' ? 'Enabled' : 'Disabled'}
+            </Badge> */}
+
             {agent.is_active ? (
               <Badge colorScheme="green" display="flex" alignItems="center" gap={1}>
                 <Icon as={FiCheckCircle} /> Active

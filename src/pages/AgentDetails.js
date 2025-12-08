@@ -39,6 +39,8 @@ import {
   AlertDialogHeader,
   AlertDialogContent,
   AlertDialogOverlay,
+  FormErrorMessage,
+  FormHelperText,
 } from '@chakra-ui/react';
 import {
   FiEdit,
@@ -76,6 +78,7 @@ const AgentDetails = () => {
   const [agent, setAgent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [referenceImage, setReferenceImage] = useState(null); // Add this line
   const [formData, setFormData] = useState({});
 
   const bg = useColorModeValue('white', 'gray.700');
@@ -90,7 +93,8 @@ const AgentDetails = () => {
         display_name: data.agent.display_name,
         prompt: data.agent.prompt,
         mode: data.agent.mode,
-        is_active: data.agent.is_active,
+        is_active: Boolean(data.agent.is_active),
+        tamper_check: Boolean(data.agent.tamper_check),
       });
     } catch (error) {
       toast({
@@ -113,13 +117,28 @@ const AgentDetails = () => {
   const handleUpdate = async () => {
     setUpdating(true);
     try {
-      await updateAgent(agentName, formData);
+      // Create FormData object if there's a reference image
+      let submitData;
+      if (referenceImage) {
+        submitData = new FormData();
+        submitData.append('display_name', formData.display_name);
+        submitData.append('prompt', formData.prompt);
+        submitData.append('mode', formData.mode);
+        submitData.append('is_active', formData.is_active);
+        submitData.append('tamper_check', formData.tamper_check);
+        submitData.append('reference_image', referenceImage);
+      } else {
+        submitData = formData;
+      }
+
+      await updateAgent(agentName, submitData);
       toast({
         title: 'Agent updated successfully',
         status: 'success',
         duration: 3000,
         isClosable: true,
       });
+      setReferenceImage(null); // Reset after successful update
       fetchAgent();
       onEditClose();
     } catch (error) {
@@ -176,6 +195,13 @@ const AgentDetails = () => {
     });
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setReferenceImage(file);
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -206,7 +232,9 @@ const AgentDetails = () => {
                     <Icon as={FiXCircle} /> Inactive
                   </Badge>
                 )}
-                <Badge colorScheme={getModeColor(agent.mode)}>{agent.mode}</Badge>
+                {/* <Badge colorScheme={agent.mode === 'ocr+llm' ? 'blue' : 'gray'}>
+                  OCR: {agent.mode === 'ocr+llm' ? 'Enabled' : 'Disabled'}
+                </Badge> */}
               </HStack>
               <Text fontSize="sm" color="gray.500" fontFamily="mono">
                 {agent.agent_name}
@@ -227,13 +255,13 @@ const AgentDetails = () => {
               >
                 View Stats
               </Button>
-              {/* <Button
+              <Button
                 leftIcon={<Icon as={FiEdit} />}
                 variant="outline"
                 onClick={onEditOpen}
               >
                 Edit
-              </Button> */}
+              </Button>
               <Button
                 leftIcon={<Icon as={FiTrash2} />}
                 variant="outline"
@@ -292,7 +320,7 @@ const AgentDetails = () => {
 
             <Box>
               <Text fontWeight="bold" mb={2}>
-                Validation Prompt
+                Validation description
               </Text>
               <Text whiteSpace="pre-wrap">{agent.prompt}</Text>
             </Box>
@@ -301,17 +329,81 @@ const AgentDetails = () => {
 
             <Box>
               <Text fontWeight="bold" mb={2}>
-                Processing Mode
+                Reference Image
               </Text>
-              <Badge colorScheme={getModeColor(agent.mode)} fontSize="md" p={2}>
-                {agent.mode}
-              </Badge>
+
+              {agent.reference_image ? (
+                <a href={agent.reference_image} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={agent.reference_image}
+                    alt="Reference"
+                    style={{
+                      maxWidth: "300px",
+                      borderRadius: "8px",
+                      border: "1px solid #ddd",
+                      cursor: "pointer"
+                    }}
+                  />
+                </a>
+              ) : (
+                <Text fontSize="sm" color="gray.500">
+                  No reference image provided
+                </Text>
+              )}
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Text fontWeight="bold" mb={2}>
+                OCR
+              </Text>
+
+              <HStack align="center">
+                <Switch
+                  isChecked={agent.mode === 'ocr+llm'}
+                  isReadOnly
+                  isDisabled
+                  colorScheme="blue"
+                  size="lg"
+                />
+                <Text fontWeight="medium">
+                  {agent.mode === 'ocr+llm' ? 'Enabled' : 'Disabled'}
+                </Text>
+              </HStack>
+
               <Text fontSize="sm" color="gray.500" mt={2}>
                 {agent.mode === 'ocr+llm'
-                  ? 'Uses AWS Textract for OCR + LLM for validation'
-                  : 'Uses LLM Vision API only (faster)'}
+                  ? 'OCR enabled for text extraction'
+                  : 'OCR disabled - using LLM Vision only'}
               </Text>
             </Box>
+
+            <Box>
+              <Text fontWeight="bold" mb={2}>
+                Tamper Check
+              </Text>
+
+              <HStack align="center">
+                <Switch
+                  isChecked={Boolean(agent.tamper_check)}
+                  isReadOnly
+                  isDisabled
+                  colorScheme="purple"
+                  size="lg"
+                />
+                <Text fontWeight="medium">
+                  {agent.tamper_check ? 'ON' : 'OFF'}
+                </Text>
+              </HStack>
+
+              <Text fontSize="sm" color="gray.500" mt={2}>
+                {agent.tamper_check
+                  ? "Tamper detection is enabled"
+                  : "Tamper detection is disabled"}
+              </Text>
+            </Box>
+
           </VStack>
         </Box>
       </VStack>
@@ -335,7 +427,7 @@ const AgentDetails = () => {
               </FormControl>
 
               <FormControl>
-                <FormLabel>Validation Prompt</FormLabel>
+                <FormLabel>Validation description</FormLabel>
                 <Textarea
                   value={formData.prompt}
                   onChange={(e) =>
@@ -371,8 +463,48 @@ const AgentDetails = () => {
                   </HStack>
                 </FormLabel>
                 <Text fontSize="sm" color="gray.500" mt={2}>
-                  Enable OCR (AWS Textract) for scanned documents. Leave off for faster LLM-only processing.
+                  Enable OCR for scanned documents. Leave off for faster processing.
                 </Text>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel htmlFor="tamper-toggle-edit">
+                  <HStack spacing={3}>
+                    <span>Tamper Detection</span>
+                    <Switch
+                      id="tamper-toggle-edit"
+                      isChecked={formData.tamper_check}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tamper_check: e.target.checked })
+                      }
+                      colorScheme="purple"
+                    />
+                  </HStack>
+                </FormLabel>
+                <Text fontSize="sm" color="gray.500" mt={2}>
+                  Enable tamper detection to check if documents have been altered.
+                </Text>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>
+                  Reference Document Image <Text as="span" color="gray.500" fontSize="sm">(Optional)</Text>
+                </FormLabel>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  size="md"
+                  p={1}
+                />
+                <Text fontSize="sm" color="gray.500" mt={2}>
+                  Upload a new reference image to update the existing one (JPG, PNG)
+                </Text>
+                {referenceImage && (
+                  <Text fontSize="sm" color="green.500" mt={2}>
+                    ✓ Selected: {referenceImage.name}
+                  </Text>
+                )}
               </FormControl>
 
               <FormControl display="flex" alignItems="center">
