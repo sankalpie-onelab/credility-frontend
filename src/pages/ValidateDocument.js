@@ -21,8 +21,9 @@ import {
   AlertIcon,
   AlertTitle,
   AlertDescription,
+  SimpleGrid,
 } from '@chakra-ui/react';
-import { FiUpload, FiCheckCircle, FiXCircle, FiFile } from 'react-icons/fi';
+import { FiUpload, FiCheckCircle, FiXCircle, FiFile, FiImage } from 'react-icons/fi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
 import { validateDocument, listAgents } from '../services/api';
@@ -72,6 +73,14 @@ const ValidateDocument = () => {
     } finally {
       setLoadingAgents(false);
     }
+  };
+
+  const convertS3Url = (url) => {
+    if (!url) return '';
+    return url.replace(
+      /^s3:\/\/([^/]+)\//,
+      'https://$1.s3.amazonaws.com/'
+    );
   };
 
   const handleFileChange = (e) => {
@@ -403,7 +412,7 @@ const ValidateDocument = () => {
                 </VStack>
               </Box>
 
-              {/* Tampering Detection - NEW SECTION */}
+              {/* Tampering Detection */}
               {result.tampering_status && (
                 <>
                   <Divider />
@@ -528,14 +537,30 @@ const ValidateDocument = () => {
 
               <Divider />
 
+              {/* Document Info Section */}
               <Box>
                 <Text fontWeight="bold" mb={2}>
-                  Document Type:
+                  Document Information:
                 </Text>
-                <Badge>{result.document_type || 'Unknown'}</Badge>
+                <VStack align="stretch" spacing={2}>
+                  <HStack>
+                    <Text fontSize="sm" fontWeight="semibold" minW="120px">
+                      Document Type:
+                    </Text>
+                    <Badge>{result.document_type || 'Unknown'}</Badge>
+                  </HStack>
+                  {result.file_name && (
+                    <HStack>
+                      <Text fontSize="sm" fontWeight="semibold" minW="120px">
+                        File Name:
+                      </Text>
+                      <Text fontSize="sm">{result.file_name}</Text>
+                    </HStack>
+                  )}
+                </VStack>
               </Box>
 
-              {/* OCR Extraction Quality - NEW SECTION */}
+              {/* OCR Extraction Quality */}
               {result.ocr_extraction_status && (
                 <>
                   <Divider />
@@ -560,8 +585,7 @@ const ValidateDocument = () => {
                           />
                           {result.ocr_extraction_status.toUpperCase()}
                         </Badge>
-                        {
-                        /*result.ocr_extraction_confidence !== null && result.ocr_extraction_confidence !== undefined && (
+                        {result.ocr_extraction_confidence !== null && result.ocr_extraction_confidence !== undefined && (
                           <Badge
                             colorScheme={
                               result.ocr_extraction_confidence >= 80 ? 'green' :
@@ -573,8 +597,7 @@ const ValidateDocument = () => {
                           >
                             Confidence: {result.ocr_extraction_confidence.toFixed(1)}%
                           </Badge>
-                        )
-                          */}
+                        )}
                       </HStack>
                     </HStack>
 
@@ -615,6 +638,55 @@ const ValidateDocument = () => {
                 </Code>
               </Box>
 
+              {/* Reference Images Section */}
+              {result.reference_images && result.reference_images.length > 0 && (
+                <>
+                  <Divider />
+
+                  <Box>
+                    <HStack mb={3}>
+                      <Icon as={FiImage} boxSize={5} />
+                      <Text fontWeight="bold">
+                        Reference Images Used:
+                      </Text>
+                      <Badge colorScheme="blue">
+                        {result.reference_images.length} image{result.reference_images.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </HStack>
+
+                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
+                      {result.reference_images.map((imageUrl, index) => {
+                        const httpUrl = convertS3Url(imageUrl);
+                        return (
+                          <Box
+                            key={index}
+                            p={2}
+                            borderWidth="1px"
+                            borderColor={borderColor}
+                            borderRadius="md"
+                            bg={bg}
+                            cursor="pointer"
+                            onClick={() => window.open(httpUrl, '_blank')}
+                          >
+                            <Image
+                              src={httpUrl}
+                              alt={`Reference ${index + 1}`}
+                              objectFit="cover"
+                              borderRadius="md"
+                              maxH="200px"
+                              w="full"
+                            />
+                            <Text fontSize="xs" textAlign="center" mt={2}>
+                              Image {index + 1}
+                            </Text>
+                          </Box>
+                        );
+                      })}
+                    </SimpleGrid>
+                  </Box>
+                </>
+              )}
+
               <Divider />
 
               <HStack justify="space-between">
@@ -634,4 +706,3 @@ const ValidateDocument = () => {
 };
 
 export default ValidateDocument;
-

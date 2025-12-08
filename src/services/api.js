@@ -35,7 +35,11 @@ export const getAgent = async (agentName) => {
 };
 
 export const updateAgent = async (agentName, updateData) => {
-  const response = await api.put(`/api/agents/${agentName}`, updateData);
+  const response = await api.put(`/api/agents/${agentName}`, updateData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };
 

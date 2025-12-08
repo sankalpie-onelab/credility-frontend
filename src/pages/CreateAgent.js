@@ -18,29 +18,27 @@ import {
   Divider,
   HStack,
   Switch,
+  Icon,
+  Tag,
+  TagLabel,
+  TagCloseButton,
+  Wrap,
+  WrapItem,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
+import { FiImage } from 'react-icons/fi';
 import MainLayout from '../components/Layout/MainLayout';
 import { createAgent } from '../services/api';
 import { getCreatorId } from '../utils/storage';
 import { validateAgentName } from '../utils/helpers';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
-// let API_BASE_URL;
-
-// if (process.env.NODE_ENV === 'development') {
-//   // Local dev: use .env value
-//   API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
-// } else {
-//   // Production: proxy through frontend domain
-//   API_BASE_URL = '/api';
-// }
 
 const CreateAgent = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
-  const [referenceImage, setReferenceImage] = useState(null); // Add this line
+  const [referenceImages, setReferenceImages] = useState([]); // Changed to array
   const [formData, setFormData] = useState({
     agent_name: '',
     display_name: '',
@@ -60,7 +58,6 @@ const CreateAgent = () => {
     }
   };
 
-  // Add this new handler
   const handleOCRToggle = (e) => {
     const useOCR = e.target.checked;
     setFormData((prev) => ({
@@ -69,7 +66,6 @@ const CreateAgent = () => {
     }));
   };
 
-  // Add tamper toggle handler after handleOCRToggle
   const handleTamperToggle = (e) => {
     const useTamper = e.target.checked;
     setFormData((prev) => ({
@@ -78,12 +74,33 @@ const CreateAgent = () => {
     }));
   };
 
-  // Add this new function
+  // Updated to handle multiple files (up to 5)
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setReferenceImage(file);
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length > 5) {
+      toast({
+        title: 'Too many files',
+        description: 'You can upload a maximum of 5 reference images',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      e.target.value = ''; // Reset input
+      return;
     }
+
+    setReferenceImages(files);
+    
+    // Clear any previous errors
+    if (errors.reference_images) {
+      setErrors((prev) => ({ ...prev, reference_images: '' }));
+    }
+  };
+
+  // Function to remove a specific image
+  const handleRemoveImage = (indexToRemove) => {
+    setReferenceImages((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
   const validate = () => {
@@ -104,11 +121,6 @@ const CreateAgent = () => {
       newErrors.description = 'Description must be at least 10 characters';
     }
 
-    // Add this validation
-    // if (!referenceImage) {
-    //   newErrors.reference_image = 'Reference image is required';
-    // }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -120,6 +132,7 @@ const CreateAgent = () => {
     setLoading(true);
     try {
       const creatorId = getCreatorId();
+      
       // Create FormData object
       const submitData = new FormData();
       submitData.append('agent_name', formData.agent_name);
@@ -129,10 +142,10 @@ const CreateAgent = () => {
       submitData.append('creator_id', creatorId);
       submitData.append('tamper', formData.tamper);
 
-      // Only append reference_image if one was selected
-      if (referenceImage) {
-        submitData.append('reference_image', referenceImage);
-      }
+      // Append all reference images (field name is reference_images for all)
+      referenceImages.forEach((file) => {
+        submitData.append('reference_images', file);
+      });
 
       const result = await createAgent(submitData);
 
@@ -219,8 +232,8 @@ const CreateAgent = () => {
               <FormControl isInvalid={!!errors.description} isRequired>
                 <FormLabel>Validation Rules (Description)</FormLabel>
                 <Textarea
-                  name="description"  // Changed from prompt
-                  value={formData.description}  // Changed from prompt
+                  name="description"
+                  value={formData.description}
                   onChange={handleChange}
                   placeholder="Example: Pass the document only if: 1) User age is above 54 years, 2) Document is not expired, 3) ID number has exactly 10 digits"
                   rows={8}
@@ -230,56 +243,61 @@ const CreateAgent = () => {
                   Describe your validation rules in natural language. Be specific
                   about what conditions must be met for a document to pass.
                 </FormHelperText>
-                {errors.description && (  // Changed from prompt
-                  <FormErrorMessage>{errors.description}</FormErrorMessage>  // Changed from prompt
+                {errors.description && (
+                  <FormErrorMessage>{errors.description}</FormErrorMessage>
                 )}
               </FormControl>
 
-              {/* Add this new FormControl */}
-              <FormControl isInvalid={!!errors.reference_image}>
+              {/* Updated Reference Images Section */}
+              <FormControl isInvalid={!!errors.reference_images}>
                 <FormLabel>
-                  Reference Document Image <Text as="span" color="gray.500" fontSize="sm">(Optional)</Text>
+                  Reference Document Images{' '}
+                  <Text as="span" color="gray.500" fontSize="sm">
+                    (Optional - up to 5 images)
+                  </Text>
                 </FormLabel>
                 <Input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleFileChange}
                   size="lg"
                   p={1}
                 />
                 <FormHelperText>
-                  Upload a reference image of the document type for the agent to learn from (JPG, PNG)
+                  Upload up to 5 reference images of the document type for the agent to learn from (JPG, PNG).
+                  The AI will consolidate knowledge from all images.
                 </FormHelperText>
-                {referenceImage && (
-                  <Text fontSize="sm" color="green.500" mt={2}>
-                    ✓ Selected: {referenceImage.name}
-                  </Text>
+                
+                {/* Display selected images */}
+                {referenceImages.length > 0 && (
+                  <Box mt={3}>
+                    <Text fontSize="sm" fontWeight="medium" mb={2} color="green.600">
+                      ✓ {referenceImages.length} image{referenceImages.length > 1 ? 's' : ''} selected:
+                    </Text>
+                    <Wrap spacing={2}>
+                      {referenceImages.map((file, index) => (
+                        <WrapItem key={index}>
+                          <Tag
+                            size="md"
+                            borderRadius="full"
+                            variant="solid"
+                            colorScheme="green"
+                          >
+                            <Icon as={FiImage} mr={1} />
+                            <TagLabel>{file.name}</TagLabel>
+                            <TagCloseButton onClick={() => handleRemoveImage(index)} />
+                          </Tag>
+                        </WrapItem>
+                      ))}
+                    </Wrap>
+                  </Box>
                 )}
-                {errors.reference_image && (
-                  <FormErrorMessage>{errors.reference_image}</FormErrorMessage>
+                
+                {errors.reference_images && (
+                  <FormErrorMessage>{errors.reference_images}</FormErrorMessage>
                 )}
               </FormControl>
-
-              {/* <FormControl>
-                <FormLabel>Processing Mode</FormLabel>
-                <Select
-                  name="mode"
-                  value={formData.mode}
-                  onChange={handleChange}
-                  size="lg"
-                >
-                  <option value="ocr+llm">
-                    OCR + LLM (Recommended for scanned documents)
-                  </option>
-                  <option value="llm">LLM Only (Faster for clear images)</option>
-                </Select>
-                <FormHelperText>
-                  <strong>OCR + LLM:</strong> Uses AWS Textract for text extraction +
-                  GPT-4 for validation.
-                  <br />
-                  <strong>LLM Only:</strong> Uses GPT-4 Vision API only (faster).
-                </FormHelperText>
-              </FormControl> */}
 
               <FormControl>
                 <FormLabel htmlFor="ocr-toggle-page">
@@ -287,7 +305,7 @@ const CreateAgent = () => {
                     <span>Use OCR</span>
                     <Switch
                       id="ocr-toggle-page"
-                      isChecked={formData.OCR}  // Changed from formData.mode === 'ocr+llm'
+                      isChecked={formData.OCR}
                       onChange={handleOCRToggle}
                       colorScheme="blue"
                       size="lg"
@@ -351,4 +369,3 @@ const CreateAgent = () => {
 };
 
 export default CreateAgent;
-

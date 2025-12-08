@@ -50,54 +50,6 @@ import MainLayout from '../components/Layout/MainLayout';
 import { getAgentStats, getAgentUsers } from '../services/api';
 import { formatNumber, formatDate, calculatePercentage } from '../utils/helpers';
 
-// Sample data for when logs are not available
-const SAMPLE_LOGS = [
-  {
-    user_id: "dev123",
-    success: true,
-    status: "pass",
-    score: 100,
-    file_input: "https://via.placeholder.com/400x300?text=Sample+Document",
-    document_type: "Identity document",
-    processing_time_ms: 5432,
-    agent_name: "sample_agent",
-    tampering_score: 0,
-    tampering_status: "pass",
-    ocr_extraction_status: "pass",
-    ocr_extraction_confidence: 95.5,
-    reason: {
-      pass_conditions: ["✓ All validation checks passed"],
-      fail_conditions: [],
-      score_explanation: "All conditions met"
-    },
-    doc_extracted_json: {
-      "Sample Field": "Sample Value"
-    }
-  },
-  {
-    user_id: "dev123",
-    success: true,
-    status: "fail",
-    score: 50,
-    file_input: "https://via.placeholder.com/400x300?text=Sample+Document+2",
-    document_type: "Identity document",
-    processing_time_ms: 6789,
-    agent_name: "sample_agent",
-    tampering_score: 25,
-    tampering_status: "warning",
-    ocr_extraction_status: "pass",
-    ocr_extraction_confidence: 78.3,
-    reason: {
-      pass_conditions: ["✓ Some checks passed"],
-      fail_conditions: ["✗ Some checks failed"],
-      score_explanation: "Partial validation success"
-    },
-    doc_extracted_json: {
-      "Sample Field": "Sample Value 2"
-    }
-  }
-];
-
 const AgentStats = () => {
   const { agentName } = useParams();
   const navigate = useNavigate();
@@ -106,6 +58,7 @@ const AgentStats = () => {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [agentInfo, setAgentInfo] = useState(null);
   const [selectedLog, setSelectedLog] = useState(null);
   const [loading, setLoading] = useState(true);
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -128,8 +81,11 @@ const AgentStats = () => {
       setStats(statsData.stats);
       setUsers(usersData.users || []);
       
-      // Use logs from API if available, otherwise use sample data
-      setLogs(statsData.logs || SAMPLE_LOGS);
+      // Use logs from API if available
+      setLogs(statsData.logs || []);
+      
+      // Set agent info from API response
+      setAgentInfo(statsData.agent_info || null);
     } catch (error) {
       toast({
         title: 'Error loading stats',
@@ -161,6 +117,11 @@ const AgentStats = () => {
     }
   };
 
+  const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString();
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -190,6 +151,11 @@ const AgentStats = () => {
             <Text color="gray.500" fontFamily="mono">
               {agentName}
             </Text>
+            {agentInfo && (
+              <Text fontSize="sm" color="gray.600" mt={1}>
+                {agentInfo.display_name} • Created: {formatDateTime(agentInfo.created_at)}
+              </Text>
+            )}
           </Box>
         </HStack>
 
@@ -217,10 +183,12 @@ const AgentStats = () => {
             borderColor={borderColor}
           >
             <Stat>
-              <StatLabel>Hits Today</StatLabel>
-              <StatNumber color="gray.800">
-                {(formatNumber(stats.today.hits) || 0)}
-              </StatNumber>
+              <StatLabel>Success Rate</StatLabel>
+              <StatNumber>{stats.success_rate?.toFixed(1)}%</StatNumber>
+              <StatHelpText>
+                <StatArrow type={stats.success_rate >= 50 ? 'increase' : 'decrease'} />
+                Pass: {stats.pass_count}, Fail: {stats.fail_count}
+              </StatHelpText>
             </Stat>
           </Box>
 
@@ -266,6 +234,9 @@ const AgentStats = () => {
               <Text fontSize="2xl" fontWeight="bold">
                 {formatNumber(stats.today?.hits || 0)}
               </Text>
+              <Text fontSize="sm" color="gray.500">
+                Pass: {stats.today?.pass || 0} | Fail: {stats.today?.fail || 0}
+              </Text>
             </Box>
 
             <Box>
@@ -275,6 +246,9 @@ const AgentStats = () => {
               <Text fontSize="2xl" fontWeight="bold">
                 {formatNumber(stats.this_week?.hits || 0)}
               </Text>
+              <Text fontSize="sm" color="gray.500">
+                Pass: {stats.this_week?.pass || 0} | Fail: {stats.this_week?.fail || 0}
+              </Text>
             </Box>
 
             <Box>
@@ -283,6 +257,9 @@ const AgentStats = () => {
               </Text>
               <Text fontSize="2xl" fontWeight="bold">
                 {formatNumber(stats.this_month?.hits || 0)}
+              </Text>
+              <Text fontSize="sm" color="gray.500">
+                Pass: {stats.this_month?.pass || 0} | Fail: {stats.this_month?.fail || 0}
               </Text>
             </Box>
           </SimpleGrid>
@@ -332,7 +309,7 @@ const AgentStats = () => {
                         <Badge colorScheme="red">{user.fail_count}</Badge>
                       </Td>
                       <Td fontSize="xs">
-                        {new Date(user.last_used).toLocaleDateString()}
+                        {formatDateTime(user.last_used)}
                       </Td>
                     </Tr>
                   ))}
@@ -363,6 +340,7 @@ const AgentStats = () => {
               <Table variant="simple" size="sm">
                 <Thead>
                   <Tr>
+                    <Th>ID</Th>
                     <Th>User ID</Th>
                     <Th>Status</Th>
                     <Th isNumeric>Score</Th>
@@ -370,16 +348,20 @@ const AgentStats = () => {
                     <Th>Tampering</Th>
                     <Th>OCR Status</Th>
                     <Th isNumeric>Processing Time</Th>
+                    <Th>Created At</Th>
                     <Th>Actions</Th>
                   </Tr>
                 </Thead>
                 <Tbody>
-                  {logs.map((log, index) => (
+                  {logs.map((log) => (
                     <Tr 
-                      key={index}
+                      key={log.id}
                       _hover={{cursor: 'pointer' }}
                       onClick={() => handleLogClick(log)}
                     >
+                      <Td fontFamily="mono" fontSize="xs">
+                        {log.id}
+                      </Td>
                       <Td fontFamily="mono" fontSize="xs">
                         {log.user_id}
                       </Td>
@@ -391,7 +373,7 @@ const AgentStats = () => {
                       <Td isNumeric fontWeight="bold">
                         {log.score}
                       </Td>
-                      <Td fontSize="xs">{log.document_type}</Td>
+                      <Td fontSize="xs">{log.document_type || 'N/A'}</Td>
                       <Td>
                         <Badge colorScheme={getStatusColor(log.tampering_status)}>
                           {log.tampering_score}
@@ -399,11 +381,14 @@ const AgentStats = () => {
                       </Td>
                       <Td>
                         <Badge colorScheme={getStatusColor(log.ocr_extraction_status)}>
-                          {log.ocr_extraction_confidence?.toFixed(1)}%
+                          {log.ocr_extraction_confidence?.toFixed(1) || '0'}%
                         </Badge>
                       </Td>
                       <Td isNumeric fontSize="xs">
                         {log.processing_time_ms}ms
+                      </Td>
+                      <Td fontSize="xs">
+                        {formatDateTime(log.created_at)}
                       </Td>
                       <Td>
                         <Button 
@@ -448,6 +433,12 @@ const AgentStats = () => {
                 {/* Overview Stats */}
                 <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
                   <Box>
+                    <Text fontSize="xs" color="gray.500" mb={1}>Log ID</Text>
+                    <Text fontFamily="mono" fontSize="sm" fontWeight="bold">
+                      {selectedLog.id}
+                    </Text>
+                  </Box>
+                  <Box>
                     <Text fontSize="xs" color="gray.500" mb={1}>User ID</Text>
                     <Text fontFamily="mono" fontSize="sm" fontWeight="bold">
                       {selectedLog.user_id}
@@ -468,7 +459,25 @@ const AgentStats = () => {
                   <Box>
                     <Text fontSize="xs" color="gray.500" mb={1}>Document Type</Text>
                     <Text fontSize="sm" fontWeight="bold">
-                      {selectedLog.document_type}
+                      {selectedLog.document_type || 'N/A'}
+                    </Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="xs" color="gray.500" mb={1}>File Name</Text>
+                    <Text fontSize="sm" fontWeight="bold" fontFamily="mono">
+                      {selectedLog.file_name || 'N/A'}
+                    </Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="xs" color="gray.500" mb={1}>Created At</Text>
+                    <Text fontSize="sm" fontWeight="bold">
+                      {formatDateTime(selectedLog.created_at)}
+                    </Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="xs" color="gray.500" mb={1}>Request IP</Text>
+                    <Text fontSize="sm" fontWeight="bold" fontFamily="mono">
+                      {selectedLog.request_ip || 'N/A'}
                     </Text>
                   </Box>
                 </SimpleGrid>
@@ -488,6 +497,9 @@ const AgentStats = () => {
                       border="1px solid"
                       borderColor={borderColor}
                     />
+                    <Text fontSize="xs" color="gray.500" mt={2}>
+                      {selectedLog.file_name || 'Document'}
+                    </Text>
                   </Box>
                 )}
 
@@ -500,7 +512,7 @@ const AgentStats = () => {
                     borderRadius="md"
                   >
                     <Text fontSize="sm" mb={2} fontWeight="bold">
-                      {selectedLog.reason?.score_explanation}
+                      {selectedLog.reason?.score_explanation || 'No explanation provided'}
                     </Text>
                     
                     {selectedLog.reason?.pass_conditions?.length > 0 && (
@@ -532,6 +544,21 @@ const AgentStats = () => {
                         </List>
                       </Box>
                     )}
+
+                    {selectedLog.reason?.user_questions?.length > 0 && (
+                      <Box mt={3}>
+                        <Text fontSize="sm" fontWeight="bold" color="blue.500" mb={1}>
+                          User Questions:
+                        </Text>
+                        <List spacing={1}>
+                          {selectedLog.reason.user_questions.map((question, i) => (
+                            <ListItem key={i} fontSize="xs" color="blue.600">
+                              {question}
+                            </ListItem>
+                          ))}
+                        </List>
+                      </Box>
+                    )}
                   </Box>
                 </Box>
 
@@ -554,7 +581,7 @@ const AgentStats = () => {
                 {/* OCR Information */}
                 <Box>
                   <Heading size="sm" mb={3}>OCR Analysis</Heading>
-                  <SimpleGrid columns={3} spacing={4}>
+                  <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
                     <Box>
                       <Text fontSize="xs" color="gray.500" mb={1}>Status</Text>
                       <Badge colorScheme={getStatusColor(selectedLog.ocr_extraction_status)}>
@@ -564,11 +591,11 @@ const AgentStats = () => {
                     <Box>
                       <Text fontSize="xs" color="gray.500" mb={1}>Confidence</Text>
                       <Text fontSize="sm" fontWeight="bold">
-                        {selectedLog.ocr_extraction_confidence?.toFixed(2)}%
+                        {selectedLog.ocr_extraction_confidence?.toFixed(2) || '0.00'}%
                       </Text>
                     </Box>
                     <Box>
-                      <Text fontSize="xs" color="gray.500" mb={1}>Details</Text>
+                      <Text fontSize="xs" color="gray.500" mb={1}>Reason</Text>
                       <Text fontSize="xs">
                         {selectedLog.ocr_extraction_reason || 'N/A'}
                       </Text>
@@ -593,6 +620,9 @@ const AgentStats = () => {
                         </Badge>
                         <Badge colorScheme="orange">
                           {selectedLog.tampering_details.confidence} confidence
+                        </Badge>
+                        <Badge colorScheme={selectedLog.tampering_details.tampering_detected ? 'red' : 'green'}>
+                          {selectedLog.tampering_details.tampering_detected ? 'Tampering Detected' : 'No Tampering'}
                         </Badge>
                       </HStack>
                       

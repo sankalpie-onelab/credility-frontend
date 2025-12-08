@@ -41,6 +41,12 @@ import {
   AlertDialogOverlay,
   FormErrorMessage,
   FormHelperText,
+  Tag,
+  TagLabel,
+  TagCloseButton,
+  Wrap,
+  WrapItem,
+  Image,
 } from '@chakra-ui/react';
 import {
   FiEdit,
@@ -50,6 +56,7 @@ import {
   FiXCircle,
   FiCopy,
   FiUpload,
+  FiImage,
 } from 'react-icons/fi';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
@@ -57,15 +64,6 @@ import { getAgent, updateAgent, deleteAgent } from '../services/api';
 import { getModeColor, formatNumber, formatDate } from '../utils/helpers';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
-// let API_BASE_URL;
-
-// if (process.env.NODE_ENV === 'development') {
-//   // Local dev: use .env value
-//   API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
-// } else {
-//   // Production: proxy through frontend domain
-//   API_BASE_URL = '/api';
-// }
 
 const AgentDetails = () => {
   const { agentName } = useParams();
@@ -78,7 +76,7 @@ const AgentDetails = () => {
   const [agent, setAgent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [referenceImage, setReferenceImage] = useState(null); // Add this line
+  const [referenceImages, setReferenceImages] = useState([]); // Changed to array
   const [formData, setFormData] = useState({});
 
   const bg = useColorModeValue('white', 'gray.700');
@@ -117,28 +115,30 @@ const AgentDetails = () => {
   const handleUpdate = async () => {
     setUpdating(true);
     try {
-      // Create FormData object if there's a reference image
-      let submitData;
-      if (referenceImage) {
-        submitData = new FormData();
-        submitData.append('display_name', formData.display_name);
-        submitData.append('prompt', formData.prompt);
-        submitData.append('mode', formData.mode);
-        submitData.append('is_active', formData.is_active);
-        submitData.append('tamper_check', formData.tamper_check);
-        submitData.append('reference_image', referenceImage);
-      } else {
-        submitData = formData;
-      }
+      // Create FormData object
+      const submitData = new FormData();
+      submitData.append('display_name', formData.display_name);
+      submitData.append('prompt', formData.prompt);
+      submitData.append('mode', formData.mode);
+      submitData.append('is_active', formData.is_active);
+      submitData.append('tamper_check', formData.tamper_check);
 
-      await updateAgent(agentName, submitData);
+      // Append all reference images if any selected
+      referenceImages.forEach((file) => {
+        submitData.append('reference_images', file);
+      });
+
+      const result = await updateAgent(agentName, submitData);
+      
       toast({
         title: 'Agent updated successfully',
+        description: result.message || 'Your agent has been updated.',
         status: 'success',
-        duration: 3000,
+        duration: 5000,
         isClosable: true,
       });
-      setReferenceImage(null); // Reset after successful update
+      
+      setReferenceImages([]); // Reset after successful update
       fetchAgent();
       onEditClose();
     } catch (error) {
@@ -186,7 +186,6 @@ const AgentDetails = () => {
     });
   };
 
-  // Add this new handler
   const handleOCRToggle = (e) => {
     const useOCR = e.target.checked;
     setFormData({
@@ -195,11 +194,28 @@ const AgentDetails = () => {
     });
   };
 
+  // Updated to handle multiple files (up to 5)
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setReferenceImage(file);
+    const files = Array.from(e.target.files || []);
+    
+    if (files.length > 5) {
+      toast({
+        title: 'Too many files',
+        description: 'You can upload a maximum of 5 reference images',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      e.target.value = ''; // Reset input
+      return;
     }
+
+    setReferenceImages(files);
+  };
+
+  // Function to remove a specific image
+  const handleRemoveImage = (indexToRemove) => {
+    setReferenceImages((prev) => prev.filter((_, index) => index !== indexToRemove));
   };
 
   if (loading) {
@@ -232,9 +248,6 @@ const AgentDetails = () => {
                     <Icon as={FiXCircle} /> Inactive
                   </Badge>
                 )}
-                {/* <Badge colorScheme={agent.mode === 'ocr+llm' ? 'blue' : 'gray'}>
-                  OCR: {agent.mode === 'ocr+llm' ? 'Enabled' : 'Disabled'}
-                </Badge> */}
               </HStack>
               <Text fontSize="sm" color="gray.500" fontFamily="mono">
                 {agent.agent_name}
@@ -329,25 +342,40 @@ const AgentDetails = () => {
 
             <Box>
               <Text fontWeight="bold" mb={2}>
-                Reference Image
+                Reference Images
               </Text>
 
-              {agent.reference_image ? (
-                <a href={agent.reference_image} target="_blank" rel="noopener noreferrer">
-                  <img
-                    src={agent.reference_image}
-                    alt="Reference"
-                    style={{
-                      maxWidth: "300px",
-                      borderRadius: "8px",
-                      border: "1px solid #ddd",
-                      cursor: "pointer"
-                    }}
-                  />
-                </a>
+              {agent.reference_images && agent.reference_images.length > 0 ? (
+                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+                  {agent.reference_images.map((imageUrl, index) => (
+                    <Box
+                      key={index}
+                      as="a"
+                      href={imageUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      cursor="pointer"
+                      _hover={{ opacity: 0.8 }}
+                    >
+                      <Image
+                        src={imageUrl}
+                        alt={`Reference ${index + 1}`}
+                        borderRadius="8px"
+                        border="1px solid"
+                        borderColor={borderColor}
+                        w="100%"
+                        h="200px"
+                        objectFit="cover"
+                      />
+                      <Text fontSize="xs" color="gray.500" mt={1} textAlign="center">
+                        Reference {index + 1}
+                      </Text>
+                    </Box>
+                  ))}
+                </SimpleGrid>
               ) : (
                 <Text fontSize="sm" color="gray.500">
-                  No reference image provided
+                  No reference images provided
                 </Text>
               )}
             </Box>
@@ -437,19 +465,6 @@ const AgentDetails = () => {
                 />
               </FormControl>
 
-              {/* <FormControl>
-                <FormLabel>Processing Mode</FormLabel>
-                <Select
-                  value={formData.mode}
-                  onChange={(e) =>
-                    setFormData({ ...formData, mode: e.target.value })
-                  }
-                >
-                  <option value="ocr+llm">OCR + LLM</option>
-                  <option value="llm">LLM Only</option>
-                </Select>
-              </FormControl> */}
-
               <FormControl>
                 <FormLabel htmlFor="ocr-toggle-edit">
                   <HStack spacing={3}>
@@ -486,24 +501,50 @@ const AgentDetails = () => {
                 </Text>
               </FormControl>
 
+              {/* Updated Reference Images Section */}
               <FormControl>
                 <FormLabel>
-                  Reference Document Image <Text as="span" color="gray.500" fontSize="sm">(Optional)</Text>
+                  Reference Document Images{' '}
+                  <Text as="span" color="gray.500" fontSize="sm">
+                    (Optional - up to 5 images)
+                  </Text>
                 </FormLabel>
                 <Input
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleFileChange}
                   size="md"
                   p={1}
                 />
-                <Text fontSize="sm" color="gray.500" mt={2}>
-                  Upload a new reference image to update the existing one (JPG, PNG)
-                </Text>
-                {referenceImage && (
-                  <Text fontSize="sm" color="green.500" mt={2}>
-                    ✓ Selected: {referenceImage.name}
-                  </Text>
+                <FormHelperText>
+                  Upload up to 5 new reference images to replace existing ones (JPG, PNG).
+                  The AI will consolidate knowledge from all images.
+                </FormHelperText>
+                
+                {/* Display selected images */}
+                {referenceImages.length > 0 && (
+                  <Box mt={3}>
+                    <Text fontSize="sm" fontWeight="medium" mb={2} color="green.600">
+                      ✓ {referenceImages.length} image{referenceImages.length > 1 ? 's' : ''} selected:
+                    </Text>
+                    <Wrap spacing={2}>
+                      {referenceImages.map((file, index) => (
+                        <WrapItem key={index}>
+                          <Tag
+                            size="md"
+                            borderRadius="full"
+                            variant="solid"
+                            colorScheme="green"
+                          >
+                            <Icon as={FiImage} mr={1} />
+                            <TagLabel>{file.name}</TagLabel>
+                            <TagCloseButton onClick={() => handleRemoveImage(index)} />
+                          </Tag>
+                        </WrapItem>
+                      ))}
+                    </Wrap>
+                  </Box>
                 )}
               </FormControl>
 
@@ -562,4 +603,3 @@ const AgentDetails = () => {
 };
 
 export default AgentDetails;
-
