@@ -101,7 +101,7 @@ function Login() {
           <VStack spacing={6}>
             {/* <Image src={logo} alt="Credility Logo" maxW="200px" /> */}
             <Heading size="lg" color="brand.700">
-              Welcome to Credility
+              Welcome!
             </Heading>
             
             <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px" borderColor="brand.500">

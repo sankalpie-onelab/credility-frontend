@@ -66,7 +66,7 @@ const Navbar = ({ onMenuClick }) => {
             bgGradient="linear(to-r, blue.400, purple.500)"
             bgClip="text"
           >
-            Credility
+            Onelab
           </Heading>
         </HStack>
 

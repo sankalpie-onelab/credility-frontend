@@ -62,6 +62,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
 import { getAgent, updateAgent, deleteAgent } from '../services/api';
 import { getModeColor, formatNumber, formatDate } from '../utils/helpers';
+import { getCreatorId } from '../utils/storage';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
 
@@ -81,6 +82,14 @@ const AgentDetails = () => {
 
   const bg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
+
+  // Convert s3://bucket/path to https://bucket.s3.amazonaws.com/path
+  const convertS3Url = (url) => {
+    if (!url) return '';
+    return url
+      .replace(/^s3:\/\//, 'https://')                // remove s3://
+      .replace(/^https:\/\/([^/]+)\//, 'https://$1.s3.amazonaws.com/'); // add domain
+  };
 
   const fetchAgent = async () => {
     setLoading(true);
@@ -117,11 +126,13 @@ const AgentDetails = () => {
     try {
       // Create FormData object
       const submitData = new FormData();
+      submitData.append('agent_name', agentName);
+      submitData.append('creator_id', getCreatorId());
       submitData.append('display_name', formData.display_name);
-      submitData.append('prompt', formData.prompt);
-      submitData.append('mode', formData.mode);
+      submitData.append('description', formData.prompt);
+      submitData.append('OCR', formData.mode === 'ocr+llm');
       submitData.append('is_active', formData.is_active);
-      submitData.append('tamper_check', formData.tamper_check);
+      submitData.append('tamper', formData.tamper_check);
 
       // Append all reference images if any selected
       referenceImages.forEach((file) => {
@@ -129,7 +140,7 @@ const AgentDetails = () => {
       });
 
       const result = await updateAgent(agentName, submitData);
-      
+
       toast({
         title: 'Agent updated successfully',
         description: result.message || 'Your agent has been updated.',
@@ -137,7 +148,7 @@ const AgentDetails = () => {
         duration: 5000,
         isClosable: true,
       });
-      
+
       setReferenceImages([]); // Reset after successful update
       fetchAgent();
       onEditClose();
@@ -197,7 +208,7 @@ const AgentDetails = () => {
   // Updated to handle multiple files (up to 5)
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || []);
-    
+
     if (files.length > 5) {
       toast({
         title: 'Too many files',
@@ -347,31 +358,34 @@ const AgentDetails = () => {
 
               {agent.reference_images && agent.reference_images.length > 0 ? (
                 <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
-                  {agent.reference_images.map((imageUrl, index) => (
-                    <Box
-                      key={index}
-                      as="a"
-                      href={imageUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      cursor="pointer"
-                      _hover={{ opacity: 0.8 }}
-                    >
-                      <Image
-                        src={imageUrl}
-                        alt={`Reference ${index + 1}`}
-                        borderRadius="8px"
-                        border="1px solid"
-                        borderColor={borderColor}
-                        w="100%"
-                        h="200px"
-                        objectFit="cover"
-                      />
-                      <Text fontSize="xs" color="gray.500" mt={1} textAlign="center">
-                        Reference {index + 1}
-                      </Text>
-                    </Box>
-                  ))}
+                  {agent.reference_images.map((imageUrl, index) => {
+                    const publicUrl = convertS3Url(imageUrl);
+                    return (
+                      <Box
+                        key={index}
+                        as="a"
+                        href={imageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        cursor="pointer"
+                        _hover={{ opacity: 0.8 }}
+                      >
+                        <Image
+                          src={publicUrl}
+                          alt={`Reference ${index + 1}`}
+                          borderRadius="8px"
+                          border="1px solid"
+                          borderColor={borderColor}
+                          w="100%"
+                          h="200px"
+                          objectFit="cover"
+                        />
+                        <Text fontSize="xs" color="gray.500" mt={1} textAlign="center">
+                          Reference {index + 1}
+                        </Text>
+                      </Box>
+                    )
+                  })}
                 </SimpleGrid>
               ) : (
                 <Text fontSize="sm" color="gray.500">
@@ -521,7 +535,7 @@ const AgentDetails = () => {
                   Upload up to 5 new reference images to replace existing ones (JPG, PNG).
                   The AI will consolidate knowledge from all images.
                 </FormHelperText>
-                
+
                 {/* Display selected images */}
                 {referenceImages.length > 0 && (
                   <Box mt={3}>
