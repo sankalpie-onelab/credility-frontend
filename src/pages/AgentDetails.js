@@ -200,7 +200,7 @@ const AgentDetails = () => {
       submitData.append('creator_id', getCreatorId());
       submitData.append('display_name', formData.display_name);
       submitData.append('description', formData.prompt);
-      submitData.append('ocr', (formData.mode === 'ocr+llm').toString());
+      submitData.append('OCR', (formData.mode === 'ocr+llm').toString());
       submitData.append('is_active', formData.is_active.toString());
       submitData.append('tamper', formData.tamper_check.toString());
 
