@@ -413,7 +413,7 @@ const ValidateDocument = () => {
               </Box>
 
               {/* Tampering Detection */}
-              {result.tampering_status && (
+              {result.tampering_status === 'enabled' && (
                 <>
                   <Divider />
 
@@ -424,7 +424,7 @@ const ValidateDocument = () => {
                       </Text>
                       <HStack>
                         <Badge
-                          colorScheme={result.tampering_status === 'pass' ? 'green' : 'red'}
+                          colorScheme={result.tampering_details?.tampering_detected ? 'red' : 'green'}
                           fontSize="md"
                           px={3}
                           py={1}
@@ -433,9 +433,9 @@ const ValidateDocument = () => {
                           gap={2}
                         >
                           <Icon
-                            as={result.tampering_status === 'pass' ? FiCheckCircle : FiXCircle}
+                            as={result.tampering_details?.tampering_detected ? FiXCircle : FiCheckCircle}
                           />
-                          {result.tampering_status.toUpperCase()}
+                          {result.tampering_details?.tampering_detected ? 'TAMPERING DETECTED' : 'NO TAMPERING'}
                         </Badge>
                         <Badge
                           colorScheme={result.tampering_score > 70 ? 'red' : result.tampering_score > 40 ? 'orange' : 'green'}

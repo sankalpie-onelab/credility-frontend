@@ -24,9 +24,13 @@ import {
   TagCloseButton,
   Wrap,
   WrapItem,
+  IconButton,
+  Card,
+  CardBody,
+  Stack,
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { FiImage } from 'react-icons/fi';
+import { FiImage, FiX } from 'react-icons/fi';
 import MainLayout from '../components/Layout/MainLayout';
 import { createAgent } from '../services/api';
 import { getCreatorId } from '../utils/storage';
@@ -38,7 +42,12 @@ const CreateAgent = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const [loading, setLoading] = useState(false);
-  const [referenceImages, setReferenceImages] = useState([]); // Changed to array
+  
+  // Updated state structure for references with contexts
+  const [references, setReferences] = useState([
+    { image: null, context: '' },
+  ]);
+  
   const [formData, setFormData] = useState({
     agent_name: '',
     display_name: '',
@@ -49,6 +58,7 @@ const CreateAgent = () => {
   const [errors, setErrors] = useState({});
   const bg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const cardBg = useColorModeValue('gray.50', 'gray.800');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -74,33 +84,57 @@ const CreateAgent = () => {
     }));
   };
 
-  // Updated to handle multiple files (up to 5)
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files || []);
+  // Handle image file change for a specific reference
+  const handleReferenceImageChange = (index, file) => {
+    setReferences((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], image: file };
+      return updated;
+    });
     
-    if (files.length > 5) {
+    // Clear any errors for this reference
+    if (errors[`reference_${index + 1}`]) {
+      setErrors((prev) => ({ ...prev, [`reference_${index + 1}`]: '' }));
+    }
+  };
+
+  // Handle context text change for a specific reference
+  const handleReferenceContextChange = (index, context) => {
+    setReferences((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], context };
+      return updated;
+    });
+    
+    // Clear any errors for this reference context
+    if (errors[`reference_${index + 1}_context`]) {
+      setErrors((prev) => ({ ...prev, [`reference_${index + 1}_context`]: '' }));
+    }
+  };
+
+  // Add a new reference slot (up to 5)
+  const handleAddReference = () => {
+    if (references.length < 5) {
+      setReferences((prev) => [...prev, { image: null, context: '' }]);
+    } else {
       toast({
-        title: 'Too many files',
-        description: 'You can upload a maximum of 5 reference images',
+        title: 'Maximum references reached',
+        description: 'You can add up to 5 reference images',
         status: 'warning',
         duration: 3000,
         isClosable: true,
       });
-      e.target.value = ''; // Reset input
-      return;
-    }
-
-    setReferenceImages(files);
-    
-    // Clear any previous errors
-    if (errors.reference_images) {
-      setErrors((prev) => ({ ...prev, reference_images: '' }));
     }
   };
 
-  // Function to remove a specific image
-  const handleRemoveImage = (indexToRemove) => {
-    setReferenceImages((prev) => prev.filter((_, index) => index !== indexToRemove));
+  // Remove a specific reference
+  const handleRemoveReference = (indexToRemove) => {
+    if (references.length > 1) {
+      setReferences((prev) => prev.filter((_, index) => index !== indexToRemove));
+    } else {
+      // If it's the last one, just reset it
+      setReferences([{ image: null, context: '' }]);
+    }
   };
 
   const validate = () => {
@@ -121,6 +155,13 @@ const CreateAgent = () => {
       newErrors.description = 'Description must be at least 10 characters';
     }
 
+    // Validate references: if an image is provided, context should also be provided
+    references.forEach((ref, index) => {
+      if (ref.image && !ref.context.trim()) {
+        newErrors[`reference_${index + 1}_context`] = 'Please provide context for this reference image';
+      }
+    });
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -138,13 +179,17 @@ const CreateAgent = () => {
       submitData.append('agent_name', formData.agent_name);
       submitData.append('display_name', formData.display_name);
       submitData.append('description', formData.description);
-      submitData.append('OCR', formData.OCR);
+      submitData.append('ocr', formData.OCR.toString());
       submitData.append('creator_id', creatorId);
-      submitData.append('tamper', formData.tamper);
+      submitData.append('tamper', formData.tamper.toString());
 
-      // Append all reference images (field name is reference_images for all)
-      referenceImages.forEach((file) => {
-        submitData.append('reference_images', file);
+      // Append reference images and contexts with numbered field names
+      references.forEach((ref, index) => {
+        if (ref.image) {
+          const refNumber = index + 1;
+          submitData.append(`reference_${refNumber}`, ref.image);
+          submitData.append(`reference_${refNumber}_context`, ref.context);
+        }
       });
 
       const result = await createAgent(submitData);
@@ -248,55 +293,99 @@ const CreateAgent = () => {
                 )}
               </FormControl>
 
-              {/* Updated Reference Images Section */}
-              <FormControl isInvalid={!!errors.reference_images}>
+              {/* Updated Reference Images Section with Contexts */}
+              <FormControl>
                 <FormLabel>
                   Reference Document Images{' '}
                   <Text as="span" color="gray.500" fontSize="sm">
-                    (Optional - up to 5 images)
+                    (Optional - up to 5 images with context)
                   </Text>
                 </FormLabel>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleFileChange}
-                  size="lg"
-                  p={1}
-                />
-                <FormHelperText>
-                  Upload up to 5 reference images of the document type for the agent to learn from (JPG, PNG).
-                  The AI will consolidate knowledge from all images.
+                <FormHelperText mb={4}>
+                  Upload reference images and provide context for each. The AI will use these to better understand the document type.
                 </FormHelperText>
-                
-                {/* Display selected images */}
-                {referenceImages.length > 0 && (
-                  <Box mt={3}>
-                    <Text fontSize="sm" fontWeight="medium" mb={2} color="green.600">
-                      ✓ {referenceImages.length} image{referenceImages.length > 1 ? 's' : ''} selected:
-                    </Text>
-                    <Wrap spacing={2}>
-                      {referenceImages.map((file, index) => (
-                        <WrapItem key={index}>
-                          <Tag
-                            size="md"
-                            borderRadius="full"
-                            variant="solid"
-                            colorScheme="green"
-                          >
-                            <Icon as={FiImage} mr={1} />
-                            <TagLabel>{file.name}</TagLabel>
-                            <TagCloseButton onClick={() => handleRemoveImage(index)} />
-                          </Tag>
-                        </WrapItem>
-                      ))}
-                    </Wrap>
-                  </Box>
-                )}
-                
-                {errors.reference_images && (
-                  <FormErrorMessage>{errors.reference_images}</FormErrorMessage>
-                )}
+
+                <VStack spacing={4} align="stretch">
+                  {references.map((ref, index) => (
+                    <Card key={index} bg={cardBg} variant="outline">
+                      <CardBody>
+                        <VStack spacing={3} align="stretch">
+                          <HStack justify="space-between">
+                            <Text fontWeight="semibold" fontSize="sm">
+                              Reference #{index + 1}
+                            </Text>
+                            {references.length > 1 && (
+                              <IconButton
+                                icon={<FiX />}
+                                size="sm"
+                                colorScheme="red"
+                                variant="ghost"
+                                onClick={() => handleRemoveReference(index)}
+                                aria-label="Remove reference"
+                              />
+                            )}
+                          </HStack>
+
+                          <FormControl isInvalid={!!errors[`reference_${index + 1}`]}>
+                            <FormLabel fontSize="sm">Image</FormLabel>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleReferenceImageChange(index, file);
+                                }
+                              }}
+                              size="md"
+                              p={1}
+                            />
+                            {ref.image && (
+                              <HStack mt={2} spacing={2}>
+                                <Icon as={FiImage} color="green.500" />
+                                <Text fontSize="sm" color="green.600">
+                                  {ref.image.name}
+                                </Text>
+                              </HStack>
+                            )}
+                            {errors[`reference_${index + 1}`] && (
+                              <FormErrorMessage>{errors[`reference_${index + 1}`]}</FormErrorMessage>
+                            )}
+                          </FormControl>
+
+                          <FormControl isInvalid={!!errors[`reference_${index + 1}_context`]}>
+                            <FormLabel fontSize="sm">Context Description</FormLabel>
+                            <Textarea
+                              value={ref.context}
+                              onChange={(e) => handleReferenceContextChange(index, e.target.value)}
+                              placeholder="e.g., In this image you can see that there is no field names are present like Name, Address, DOB etc. The document has a photo on the left side..."
+                              rows={3}
+                              size="md"
+                            />
+                            <FormHelperText fontSize="xs">
+                              Describe what's visible in the image, layout, field names, unique characteristics, etc.
+                            </FormHelperText>
+                            {errors[`reference_${index + 1}_context`] && (
+                              <FormErrorMessage>{errors[`reference_${index + 1}_context`]}</FormErrorMessage>
+                            )}
+                          </FormControl>
+                        </VStack>
+                      </CardBody>
+                    </Card>
+                  ))}
+
+                  {references.length < 5 && (
+                    <Button
+                      onClick={handleAddReference}
+                      variant="outline"
+                      colorScheme="blue"
+                      size="sm"
+                      leftIcon={<Icon as={FiImage} />}
+                    >
+                      Add Another Reference Image ({references.length}/5)
+                    </Button>
+                  )}
+                </VStack>
               </FormControl>
 
               <FormControl>
