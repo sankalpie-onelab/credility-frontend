@@ -489,7 +489,7 @@ const AgentStats = () => {
                   <Box>
                     <Heading size="sm" mb={3}>Document Image</Heading>
                     <Image 
-                      src={selectedLog.file_input} 
+                      src={selectedLog.file_input.split('?')[0]}
                       alt="Document" 
                       maxH="400px" 
                       objectFit="contain"
