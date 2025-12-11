@@ -67,6 +67,7 @@ import MainLayout from '../components/Layout/MainLayout';
 import { getAgent, updateAgent, deleteAgent } from '../services/api';
 import { getModeColor, formatNumber, formatDate } from '../utils/helpers';
 import { getCreatorId } from '../utils/storage';
+import CrossValidation from '../components/CrossValidation/CrossValidation';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
 
@@ -81,12 +82,12 @@ const AgentDetails = () => {
   const [agent, setAgent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  
+
   // Updated state structure for references with contexts
   const [references, setReferences] = useState([
     { image: null, context: '' },
   ]);
-  
+
   const [formData, setFormData] = useState({});
 
   const bg = useColorModeValue('white', 'gray.700');
@@ -496,6 +497,13 @@ const AgentDetails = () => {
               </Text>
             </Box>
 
+            <Divider />
+
+            {/* Cross-Validation Component */}
+            <Box>
+              <CrossValidation agentName={agent.agent_name} />
+            </Box>
+
           </VStack>
         </Box>
       </VStack>
@@ -564,6 +572,9 @@ const AgentDetails = () => {
                   Enable tamper detection to check if documents have been altered.
                 </Text>
               </FormControl>
+
+              {/* Cross-Validation Component in Edit Modal */}
+              <CrossValidation agentName={agentName} />
 
               {/* Updated Reference Images Section with Contexts */}
               <FormControl w="full">

@@ -35,6 +35,7 @@ import MainLayout from '../components/Layout/MainLayout';
 import { createAgent } from '../services/api';
 import { getCreatorId } from '../utils/storage';
 import { validateAgentName } from '../utils/helpers';
+import CrossValidation from '../components/CrossValidation/CrossValidation';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
 
@@ -427,6 +428,9 @@ const CreateAgent = () => {
                   <strong>Disabled:</strong> Skips tamper detection (faster processing).
                 </FormHelperText>
               </FormControl>
+
+              {/* Cross-Validation Component */}
+              <CrossValidation agentName={formData.agent_name} />
 
               <Divider />
 
