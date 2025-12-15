@@ -79,3 +79,4 @@ export const isValidFileType = (file) => {
   return validTypes.includes(file.type);
 };
 
+

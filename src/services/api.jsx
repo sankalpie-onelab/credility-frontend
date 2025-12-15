@@ -1,17 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
-// let API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://13.233.155.255:8000';
 
-// if (process.env.NODE_ENV === 'development') {
-//   // Local dev: use .env value
-//   API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
-// } else {
-//   // Production: proxy through frontend domain
-//   API_BASE_URL = '/api';
-// }
-
-console.log("The API_BASE_URL is: ", process.env.REACT_APP_API_BASE_URL);
+console.log("The API_BASE_URL is: ", import.meta.env.VITE_API_BASE_URL);
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -63,6 +54,20 @@ export const validateDocument = async (agentName, formData) => {
   return response.data;
 };
 
+// New function for cross-validation
+export const validateDocumentWithSupporting = async (agentName, formData) => {
+  const response = await api.post(
+    `/api/agent/${agentName}/validate-supporting`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data;
+};
+
 // Analytics APIs
 export const getAgentsByCreator = async (creatorId, params = {}) => {
   const response = await api.get(`/api/creator/${creatorId}/agents`, { params });
@@ -90,4 +95,5 @@ export const getAgentHitCount = async (agentName) => {
 };
 
 export default api;
+
 

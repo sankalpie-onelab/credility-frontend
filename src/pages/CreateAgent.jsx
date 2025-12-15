@@ -37,7 +37,7 @@ import { getCreatorId } from '../utils/storage';
 import { validateAgentName } from '../utils/helpers';
 import CrossValidation from '../components/CrossValidation/CrossValidation';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://13.233.155.255:8000';
 
 const CreateAgent = () => {
   const navigate = useNavigate();
