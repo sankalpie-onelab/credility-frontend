@@ -29,6 +29,7 @@ import {
   Tabs,
   IconButton,
   Tooltip,
+  Input
 } from '@chakra-ui/react';
 import { FiUpload, FiCheckCircle, FiXCircle, FiFile, FiImage, FiX } from 'react-icons/fi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -50,6 +51,7 @@ const ValidateDocument = () => {
   const [result, setResult] = useState(null);
   const [validationType, setValidationType] = useState('single');
   const [supportingFiles, setSupportingFiles] = useState([]);
+  const [supportingFileDescriptions, setSupportingFileDescriptions] = useState([]);
 
   const bg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
@@ -123,38 +125,47 @@ const ValidateDocument = () => {
   };
 
   const handleSupportingFileChange = (e) => {
-    const selectedFiles = Array.from(e.target.files || []);
-    
-    const validFiles = selectedFiles.filter(f => isValidFileType(f));
-    
-    if (validFiles.length !== selectedFiles.length) {
-      toast({
-        title: 'Invalid file type',
-        description: 'Some files were skipped. Only PDF, JPG, JPEG, or PNG files are allowed',
-        status: 'warning',
-        duration: 5000,
-        isClosable: true,
-      });
-    }
+  const selectedFiles = Array.from(e.target.files || []);
+  
+  const validFiles = selectedFiles.filter(f => isValidFileType(f));
+  
+  if (validFiles.length !== selectedFiles.length) {
+    toast({
+      title: 'Invalid file type',
+      description: 'Some files were skipped. Only PDF, JPG, JPEG, or PNG files are allowed',
+      status: 'warning',
+      duration: 5000,
+      isClosable: true,
+    });
+  }
 
-    const newFiles = [...supportingFiles, ...validFiles].slice(0, 5);
-    setSupportingFiles(newFiles);
-    setResult(null);
+  const newFiles = [...supportingFiles, ...validFiles].slice(0, 5);
+  setSupportingFiles(newFiles);
+  
+  // Add empty descriptions for new files
+  const newDescriptions = [...supportingFileDescriptions];
+  validFiles.forEach(() => {
+    newDescriptions.push('');
+  });
+  setSupportingFileDescriptions(newDescriptions.slice(0, 5));
+  
+  setResult(null);
 
-    if (newFiles.length >= 5) {
-      toast({
-        title: 'Maximum files reached',
-        description: 'You can upload up to 5 supporting documents',
-        status: 'info',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
+  if (newFiles.length >= 5) {
+    toast({
+      title: 'Maximum files reached',
+      description: 'You can upload up to 5 supporting documents',
+      status: 'info',
+      duration: 3000,
+      isClosable: true,
+    });
+  }
+};
 
   const removeSupportingFile = (index) => {
-    setSupportingFiles(supportingFiles.filter((_, i) => i !== index));
-  };
+  setSupportingFiles(supportingFiles.filter((_, i) => i !== index));
+  setSupportingFileDescriptions(supportingFileDescriptions.filter((_, i) => i !== index));
+};
 
   const handleValidate = async () => {
     if (!file) {
@@ -214,6 +225,7 @@ const ValidateDocument = () => {
         
         supportingFiles.forEach((suppFile, index) => {
           formData.append(`supporting_file_${index + 1}`, suppFile);
+          formData.append(`supporting_file_${index + 1}_description`, supportingFileDescriptions[index] || '');
         });
 
         const validationResult = await validateDocumentWithSupporting(selectedAgent, formData);
@@ -245,6 +257,7 @@ const ValidateDocument = () => {
     setPreview(null);
     setResult(null);
     setSupportingFiles([]);
+    setSupportingFileDescriptions([]);
   };
 
   if (loadingAgents) {
@@ -513,27 +526,40 @@ const ValidateDocument = () => {
                     </Box>
 
                     {supportingFiles.map((suppFile, index) => (
-                      <Box key={index} w="full" p={4} bg={dropBg} borderRadius="md">
-                        <HStack justify="space-between">
-                          <HStack>
-                            <Badge colorScheme="purple">{index + 1}</Badge>
-                            <Icon as={FiFile} boxSize={6} />
-                            <VStack align="start" spacing={0}>
-                              <Text fontWeight="bold">{suppFile.name}</Text>
-                              <Text fontSize="sm" color="gray.500">
-                                {formatFileSize(suppFile.size)}
-                              </Text>
-                            </VStack>
-                          </HStack>
-                          <IconButton
-                            size="sm"
-                            icon={<FiX />}
-                            onClick={() => removeSupportingFile(index)}
-                            aria-label="Remove file"
-                          />
-                        </HStack>
-                      </Box>
-                    ))}
+  <Box key={index} w="full">
+    <Box w="full" p={4} bg={dropBg} borderRadius="md" mb={2}>
+      <HStack justify="space-between">
+        <HStack>
+          <Badge colorScheme="purple">{index + 1}</Badge>
+          <Icon as={FiFile} boxSize={6} />
+          <VStack align="start" spacing={0}>
+            <Text fontWeight="bold">{suppFile.name}</Text>
+            <Text fontSize="sm" color="gray.500">
+              {formatFileSize(suppFile.size)}
+            </Text>
+          </VStack>
+        </HStack>
+        <IconButton
+          size="sm"
+          icon={<FiX />}
+          onClick={() => removeSupportingFile(index)}
+          aria-label="Remove file"
+        />
+      </HStack>
+    </Box>
+    <Input
+      placeholder={`Description (optional) - e.g., "Medical bill for insurance claim"`}
+      size="sm"
+      value={supportingFileDescriptions[index] || ''}
+      onChange={(e) => {
+        const newDescriptions = [...supportingFileDescriptions];
+        newDescriptions[index] = e.target.value;
+        setSupportingFileDescriptions(newDescriptions);
+      }}
+      mb={4}
+    />
+  </Box>
+))}
                   </VStack>
                 </Box>
 
@@ -1144,36 +1170,28 @@ const ValidateDocument = () => {
                 )}
 
                 {/* Consistency Checks */}
-                {result.agentic_cross_validation.consistency_checks?.length > 0 && (
-                  <Box>
-                    <Text fontWeight="bold" mb={2}>Consistency Checks</Text>
-                    <VStack align="stretch" spacing={2}>
-                      {result.agentic_cross_validation.consistency_checks.map((check, i) => (
-                        <Box key={i} p={3} bg={dropBg} borderRadius="md" borderLeftWidth="4px" borderLeftColor={check.status === 'consistent' ? 'green.500' : 'red.500'}>
-                          <HStack justify="space-between" mb={1}>
-                            <Text fontSize="sm" fontWeight="bold">{check.field_name}</Text>
-                            <Badge colorScheme={check.status === 'consistent' ? 'green' : 'red'} size="sm">
-                              {check.status}
-                            </Badge>
-                          </HStack>
-                          <Text fontSize="xs" color="gray.600">{check.message}</Text>
-                        </Box>
-                      ))}
-                    </VStack>
-                  </Box>
-                )}
-
-                {/* Contradictions */}
                 {result.agentic_cross_validation.contradictions?.length > 0 && (
                   <Box>
                     <Text fontWeight="bold" fontSize="sm" color="red.600" mb={2}>
                       ⚠️ Contradictions Found:
                     </Text>
-                    <VStack align="stretch" spacing={2} pl={4}>
+                    <VStack align="stretch" spacing={2}>
                       {result.agentic_cross_validation.contradictions.map((contradiction, i) => (
                         <Box key={i} p={3} bg="red.50" borderRadius="md" borderWidth="1px" borderColor="red.200">
-                          <Text fontSize="sm" fontWeight="bold" mb={1}>{contradiction.field}</Text>
-                          <Text fontSize="xs">{contradiction.description}</Text>
+                          <HStack justify="space-between" mb={2}>
+                            <Text fontSize="sm" fontWeight="bold">{contradiction.field_name}</Text>
+                            <Badge colorScheme="orange" size="sm">
+                              {contradiction.severity}
+                            </Badge>
+                          </HStack>
+                          <Text fontSize="xs" mb={2}>{contradiction.explanation}</Text>
+                          <VStack align="stretch" spacing={1} fontSize="xs" color="gray.600" pl={2}>
+                            {contradiction.conflicting_documents?.map((doc, docIndex) => (
+                              <Text key={docIndex}>
+                                • <Text as="span" fontWeight="bold">{doc.type}:</Text> {doc.value}
+                              </Text>
+                            ))}
+                          </VStack>
                         </Box>
                       ))}
                     </VStack>
