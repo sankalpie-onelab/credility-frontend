@@ -63,6 +63,21 @@ export const validateDocument = async (agentName, formData) => {
   return response.data;
 };
 
+// New function for cross-validation
+export const validateDocumentWithSupporting = async (agentName, formData) => {
+  const response = await api.post(
+    `/api/agent/${agentName}/validate-supporting`,
+    formData,
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }
+  );
+  return response.data;
+};
+
+
 // Analytics APIs
 export const getAgentsByCreator = async (creatorId, params = {}) => {
   const response = await api.get(`/api/creator/${creatorId}/agents`, { params });
