@@ -122,6 +122,14 @@ const AgentStats = () => {
     return new Date(dateString).toLocaleString();
   };
 
+  const getFileType = (url = '') => {
+  const cleanUrl = url.split('?')[0].toLowerCase();
+
+  if (cleanUrl.endsWith('.pdf')) return 'pdf';
+  if (cleanUrl.match(/\.(png|jpg|jpeg|webp)$/)) return 'image';
+  return 'unknown';
+};
+
   if (loading) {
     return (
       <MainLayout>
@@ -486,22 +494,66 @@ const AgentStats = () => {
 
                 {/* Document Image */}
                 {selectedLog.file_input && (
-                  <Box>
-                    <Heading size="sm" mb={3}>Document Image</Heading>
-                    <Image 
-                      src={selectedLog.file_input.split('?')[0]}
-                      alt="Document" 
-                      maxH="400px" 
-                      objectFit="contain"
-                      borderRadius="md"
-                      border="1px solid"
-                      borderColor={borderColor}
-                    />
-                    <Text fontSize="xs" color="gray.500" mt={2}>
-                      {selectedLog.file_name || 'Document'}
-                    </Text>
-                  </Box>
-                )}
+  <Box>
+    <Heading size="sm" mb={3}>Document</Heading>
+
+    {(() => {
+      const fileUrl = selectedLog.file_input.split('?')[0];
+      const fileType = getFileType(fileUrl);
+
+      if (fileType === 'image') {
+        return (
+          <Image
+            src={fileUrl}
+            alt="Document"
+            maxH="400px"
+            objectFit="contain"
+            borderRadius="md"
+            border="1px solid"
+            borderColor={borderColor}
+          />
+        );
+      }
+
+      if (fileType === 'pdf') {
+        return (
+          <Box
+            border="1px solid"
+            borderColor={borderColor}
+            borderRadius="md"
+            overflow="hidden"
+            height="500px"
+          >
+            <iframe
+              src={fileUrl}
+              title="PDF Document"
+              width="100%"
+              height="100%"
+              style={{ border: 'none' }}
+            />
+          </Box>
+        );
+      }
+
+      return (
+        <Button
+          as="a"
+          href={fileUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          colorScheme="blue"
+          variant="outline"
+        >
+          Open Document
+        </Button>
+      );
+    })()}
+
+    <Text fontSize="xs" color="gray.500" mt={2}>
+      {selectedLog.file_name || 'Document'}
+    </Text>
+  </Box>
+)}
 
                 {/* Validation Results */}
                 <Box>
