@@ -506,6 +506,168 @@ const AgentDetails = () => {
 
           </VStack>
         </Box>
+
+        {/* Widget Integration Guide */}
+        <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
+          <VStack spacing={4} align="stretch">
+            <Heading size="md" color="blue.600">
+              Widget Integration Guide
+            </Heading>
+            <Text>
+              Easily embed this agent's validation in your existing forms. Copy-paste the snippet below:
+            </Text>
+
+            {/* Instructions */}
+            <VStack spacing={3} align="stretch" mt={4}>
+              <Box>
+                <Text fontWeight="bold" mb={1}>📦 1. Load the Widget Library</Text>
+                <Text fontSize="sm">
+                  Add this script to your page before the closing body tag:
+                </Text>
+                <Code display="block" p={2} mt={1} bg="gray.50" fontSize="xs">
+                  {'<script src="https://cdn.your-domain.com/doc-validator-widget.js"></script>'}
+                </Code>
+              </Box>
+
+              <Box>
+                <Text fontWeight="bold" mb={1}>🎯 2. Add HTML Structure</Text>
+                <Text fontSize="sm">
+                  For each document upload field, add the snippet below. Replace "unique-id-here" with a unique identifier.
+                </Text>
+              </Box>
+
+              <Box>
+                <Text fontWeight="bold" mb={1}>🚀 3. Initialize</Text>
+                <Text fontSize="sm">
+                  Add this script after loading the widget:
+                </Text>
+                <Code display="block" p={2} mt={1} bg="gray.50" fontSize="xs">
+                  {`<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    DocumentValidator.autoInitialize();
+  });
+</script>`}
+                </Code>
+              </Box>
+            </VStack>
+
+            {/* Copyable Code Snippet */}
+            <Box position="relative">
+              <Text fontWeight="bold" mb={2} fontSize="sm">
+                Copy this HTML snippet:
+              </Text>
+              <Box
+                bg="gray.900"
+                color="green.300"
+                p={4}
+                borderRadius="md"
+                fontFamily="monospace"
+                fontSize="sm"
+                position="relative"
+                overflowX="auto"
+              >
+                <pre style={{ margin: 0 }}>
+                  {`
+  <!-- Widget Container -->
+  <div>
+    <div data-widget-for="unique-id-here"></div>
+  </div>
+`}
+                </pre>
+                <Button
+                  position="absolute"
+                  top={2}
+                  right={2}
+                  size="xs"
+                  colorScheme="blue"
+                  leftIcon={<Icon as={FiCopy} />}
+                  onClick={() => {
+                    navigator.clipboard.writeText(`
+  <!-- Widget Container -->
+  <div>
+    <div data-widget-for="unique-id-here"></div>
+  </div>
+`);
+                    toast({
+                      title: 'Code copied!',
+                      status: 'success',
+                      duration: 2000,
+                    });
+                  }}
+                >
+                  Copy
+                </Button>
+              </Box>
+            </Box>
+
+            <Box>
+              <Text fontSize="sm">
+                Include the Agent ID in your frontend's "input" tag.
+              </Text>
+              <Code display="block" p={2} mt={1} bg="gray.50" fontSize="xs">
+                  {`
+                  <input 
+              type="file" 
+              id="unique-id-here" 
+              accept=".pdf,.jpg,.jpeg,.png"
+              data-agent-id=${agent.agent_name}
+            />
+                  `}
+              </Code>
+            </Box>
+
+            {/* Example with Multiple Widgets */}
+            <Box mt={4} p={4} bg="gray.50" borderRadius="md">
+              <Text fontWeight="bold" mb={2}>📝 Example: Multiple Documents</Text>
+              <Text fontSize="sm" mb={2}>
+                Here's how to validate multiple documents with the same agent:
+              </Text>
+              <Code display="block" p={2} bg="gray.100" fontSize="xs" whiteSpace="pre" overflowX="auto">
+                {`<!-- Document 1 -->
+<div class="form-row">
+  <input type="file" data-agent-id="${agent.agent_name}" />
+  <button>Validate</button>
+  <div data-widget-for="document-1"></div>
+</div>
+
+<!-- Document 2 (Same Agent, Separate Widget) -->
+<div class="form-row">
+  <input type="file" data-agent-id="${agent.agent_name}" />
+  <button>Validate</button>
+  <div data-widget-for="document-2"></div>
+</div>`}
+              </Code>
+            </Box>
+
+            {/* Key Features */}
+            <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} mt={4}>
+              <Box bg="blue.50" p={3} borderRadius="md">
+                <Text fontWeight="bold" mb={1}>✨ Multiple Instances</Text>
+                <Text fontSize="sm">
+                  Use the same agent ID multiple times with different widget IDs. Each maintains separate state.
+                </Text>
+              </Box>
+              <Box bg="green.50" p={3} borderRadius="md">
+                <Text fontWeight="bold" mb={1}>🔄 Auto Discovery</Text>
+                <Text fontSize="sm">
+                  The widget automatically connects file inputs, buttons, and status displays in the same row.
+                </Text>
+              </Box>
+              <Box bg="purple.50" p={3} borderRadius="md">
+                <Text fontWeight="bold" mb={1}>📊 History Panel</Text>
+                <Text fontSize="sm">
+                  Click the purple bubble (bottom-right) to view validation history across all agents.
+                </Text>
+              </Box>
+              <Box bg="yellow.50" p={3} borderRadius="md">
+                <Text fontWeight="bold" mb={1}>🔧 Zero Config</Text>
+                <Text fontSize="sm">
+                  No JavaScript required. Just add the HTML structure and let autoInitialize handle the rest.
+                </Text>
+              </Box>
+            </SimpleGrid>
+          </VStack>
+        </Box>
       </VStack>
 
       {/* Edit Modal */}
