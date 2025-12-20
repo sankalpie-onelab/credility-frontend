@@ -525,7 +525,7 @@ const AgentDetails = () => {
                   Add this script to your page before the closing body tag:
                 </Text>
                 <Code display="block" p={2} mt={1} bg="gray.50" fontSize="xs">
-                  {'<script src="http://13.50.14.85/doc-validator-widget.js"></script>'}
+                  {'<script src="http://13.50.14.85/widget/doc-validator-widget.js"></script>'}
                 </Code>
               </Box>
 
