@@ -520,7 +520,7 @@ const AgentDetails = () => {
             {/* Instructions */}
             <VStack spacing={3} align="stretch" mt={4}>
               <Box>
-                <Text fontWeight="bold" mb={1}>📦 1. Load the Widget Library</Text>
+                <Text fontWeight="bold" mb={1}>📦 1. Load the Widget Library (one-time)</Text>
                 <Text fontSize="sm">
                   Add this script to your page before the closing body tag:
                 </Text>
@@ -529,15 +529,10 @@ const AgentDetails = () => {
                 </Code>
               </Box>
 
-              <Box>
-                <Text fontWeight="bold" mb={1}>🎯 2. Add HTML Structure</Text>
-                <Text fontSize="sm">
-                  For each document upload field, add the snippet below. Replace "unique-id-here" with a unique identifier.
-                </Text>
-              </Box>
+
 
               <Box>
-                <Text fontWeight="bold" mb={1}>🚀 3. Initialize</Text>
+                <Text fontWeight="bold" mb={1}>🚀 3. Initialize (one-time)</Text>
                 <Text fontSize="sm">
                   Add this script after loading the widget:
                 </Text>
@@ -551,6 +546,12 @@ const AgentDetails = () => {
               </Box>
             </VStack>
 
+            <Box>
+              <Text fontWeight="bold" mb={1}>🎯 2. Add HTML Structure</Text>
+              <Text fontSize="sm">
+                For each document upload field, add the snippet below. Replace "unique-id-here" with a unique identifier.
+              </Text>
+            </Box>
             {/* Copyable Code Snippet */}
             <Box position="relative">
               <Text fontWeight="bold" mb={2} fontSize="sm">
@@ -605,7 +606,7 @@ const AgentDetails = () => {
                 Include the Agent ID in your frontend's "input" tag.
               </Text>
               <Code display="block" p={2} mt={1} bg="gray.50" fontSize="xs">
-                  {`
+                {`
                   <input 
               type="file" 
               id="unique-id-here" 
