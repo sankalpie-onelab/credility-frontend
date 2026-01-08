@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Heading,
@@ -31,7 +31,6 @@ import {
   FormLabel,
   Input,
   Textarea,
-  Select,
   Switch,
   AlertDialog,
   AlertDialogBody,
@@ -39,17 +38,6 @@ import {
   AlertDialogHeader,
   AlertDialogContent,
   AlertDialogOverlay,
-  FormErrorMessage,
-  FormHelperText,
-  Tag,
-  TagLabel,
-  TagCloseButton,
-  Wrap,
-  WrapItem,
-  Image,
-  IconButton,
-  Card,
-  CardBody,
 } from '@chakra-ui/react';
 import {
   FiEdit,
@@ -59,15 +47,12 @@ import {
   FiXCircle,
   FiCopy,
   FiUpload,
-  FiImage,
-  FiX,
 } from 'react-icons/fi';
 import { useParams, useNavigate } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
 import { getAgent, updateAgent, deleteAgent } from '../services/api';
-import { getModeColor, formatNumber, formatDate } from '../utils/helpers';
+import { formatNumber, formatDate } from '../utils/helpers';
 import { getCreatorId } from '../utils/storage';
-import CrossValidation from '../components/CrossValidation/CrossValidation';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
 
@@ -92,17 +77,8 @@ const AgentDetails = () => {
 
   const bg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
-  const cardBg = useColorModeValue('gray.50', 'gray.800');
 
-  // Convert s3://bucket/path to https://bucket.s3.amazonaws.com/path
-  const convertS3Url = (url) => {
-    if (!url) return '';
-    return url
-      .replace(/^s3:\/\//, 'https://')                // remove s3://
-      .replace(/^https:\/\/([^/]+)\//, 'https://$1.s3.amazonaws.com/'); // add domain
-  };
-
-  const fetchAgent = async () => {
+  const fetchAgent = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getAgent(agentName);
@@ -126,54 +102,12 @@ const AgentDetails = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [agentName, toast, navigate]);
 
   useEffect(() => {
     fetchAgent();
-  }, [agentName]);
+  }, [fetchAgent]);
 
-  // Handle image file change for a specific reference
-  const handleReferenceImageChange = (index, file) => {
-    setReferences((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], image: file };
-      return updated;
-    });
-  };
-
-  // Handle context text change for a specific reference
-  const handleReferenceContextChange = (index, context) => {
-    setReferences((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], context };
-      return updated;
-    });
-  };
-
-  // Add a new reference slot (up to 5)
-  const handleAddReference = () => {
-    if (references.length < 5) {
-      setReferences((prev) => [...prev, { image: null, context: '' }]);
-    } else {
-      toast({
-        title: 'Maximum references reached',
-        description: 'You can add up to 5 reference images',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  // Remove a specific reference
-  const handleRemoveReference = (indexToRemove) => {
-    if (references.length > 1) {
-      setReferences((prev) => prev.filter((_, index) => index !== indexToRemove));
-    } else {
-      // If it's the last one, just reset it
-      setReferences([{ image: null, context: '' }]);
-    }
-  };
 
   const handleUpdate = async () => {
     // Validate references: if an image is provided, context should also be provided
@@ -269,14 +203,6 @@ const AgentDetails = () => {
       status: 'success',
       duration: 2000,
       isClosable: true,
-    });
-  };
-
-  const handleOCRToggle = (e) => {
-    const useOCR = e.target.checked;
-    setFormData({
-      ...formData,
-      mode: useOCR ? 'ocr+llm' : 'llm'
     });
   };
 
@@ -402,107 +328,6 @@ const AgentDetails = () => {
 
             <Divider />
 
-            <Box>
-              <Text fontWeight="bold" mb={2}>
-                Reference Images
-              </Text>
-
-              {agent.reference_images && agent.reference_images.length > 0 ? (
-                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
-                  {agent.reference_images.map((imageUrl, index) => {
-                    const publicUrl = convertS3Url(imageUrl);
-                    return (
-                      <Box
-                        key={index}
-                        as="a"
-                        href={imageUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        cursor="pointer"
-                        _hover={{ opacity: 0.8 }}
-                      >
-                        <Image
-                          src={publicUrl}
-                          alt={`Reference ${index + 1}`}
-                          borderRadius="8px"
-                          border="1px solid"
-                          borderColor={borderColor}
-                          w="100%"
-                          h="200px"
-                          objectFit="cover"
-                        />
-                        <Text fontSize="xs" color="gray.500" mt={1} textAlign="center">
-                          Reference {index + 1}
-                        </Text>
-                      </Box>
-                    )
-                  })}
-                </SimpleGrid>
-              ) : (
-                <Text fontSize="sm" color="gray.500">
-                  No reference images provided
-                </Text>
-              )}
-            </Box>
-
-            <Divider />
-
-            <Box>
-              <Text fontWeight="bold" mb={2}>
-                OCR
-              </Text>
-
-              <HStack align="center">
-                <Switch
-                  isChecked={agent.mode === 'ocr+llm'}
-                  isReadOnly
-                  isDisabled
-                  colorScheme="blue"
-                  size="lg"
-                />
-                <Text fontWeight="medium">
-                  {agent.mode === 'ocr+llm' ? 'Enabled' : 'Disabled'}
-                </Text>
-              </HStack>
-
-              <Text fontSize="sm" color="gray.500" mt={2}>
-                {agent.mode === 'ocr+llm'
-                  ? 'OCR enabled for text extraction'
-                  : 'OCR disabled - using LLM Vision only'}
-              </Text>
-            </Box>
-
-            <Box>
-              <Text fontWeight="bold" mb={2}>
-                Tamper Check
-              </Text>
-
-              <HStack align="center">
-                <Switch
-                  isChecked={Boolean(agent.tamper_check)}
-                  isReadOnly
-                  isDisabled
-                  colorScheme="purple"
-                  size="lg"
-                />
-                <Text fontWeight="medium">
-                  {agent.tamper_check ? 'ON' : 'OFF'}
-                </Text>
-              </HStack>
-
-              <Text fontSize="sm" color="gray.500" mt={2}>
-                {agent.tamper_check
-                  ? "Tamper detection is enabled"
-                  : "Tamper detection is disabled"}
-              </Text>
-            </Box>
-
-            <Divider />
-
-            {/* Cross-Validation Component */}
-            <Box>
-              <CrossValidation agentName={agent.agent_name} />
-            </Box>
 
           </VStack>
         </Box>
@@ -700,133 +525,6 @@ const AgentDetails = () => {
                 />
               </FormControl>
 
-              <FormControl>
-                <FormLabel htmlFor="ocr-toggle-edit">
-                  <HStack spacing={3}>
-                    <span>Use OCR</span>
-                    <Switch
-                      id="ocr-toggle-edit"
-                      isChecked={formData.mode === 'ocr+llm'}
-                      onChange={handleOCRToggle}
-                      colorScheme="blue"
-                    />
-                  </HStack>
-                </FormLabel>
-                <Text fontSize="sm" color="gray.500" mt={2}>
-                  Enable OCR for scanned documents. Leave off for faster processing.
-                </Text>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel htmlFor="tamper-toggle-edit">
-                  <HStack spacing={3}>
-                    <span>Tamper Detection</span>
-                    <Switch
-                      id="tamper-toggle-edit"
-                      isChecked={formData.tamper_check}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tamper_check: e.target.checked })
-                      }
-                      colorScheme="purple"
-                    />
-                  </HStack>
-                </FormLabel>
-                <Text fontSize="sm" color="gray.500" mt={2}>
-                  Enable tamper detection to check if documents have been altered.
-                </Text>
-              </FormControl>
-
-              {/* Cross-Validation Component in Edit Modal */}
-              <CrossValidation agentName={agentName} />
-
-              {/* Updated Reference Images Section with Contexts */}
-              <FormControl w="full">
-                <FormLabel>
-                  Reference Document Images{' '}
-                  <Text as="span" color="gray.500" fontSize="sm">
-                    (Optional - up to 5 images with context)
-                  </Text>
-                </FormLabel>
-                <FormHelperText mb={4}>
-                  Upload new reference images with context to replace existing ones. The AI will use these to better understand the document type.
-                </FormHelperText>
-
-                <VStack spacing={4} align="stretch">
-                  {references.map((ref, index) => (
-                    <Card key={index} bg={cardBg} variant="outline">
-                      <CardBody>
-                        <VStack spacing={3} align="stretch">
-                          <HStack justify="space-between">
-                            <Text fontWeight="semibold" fontSize="sm">
-                              Reference #{index + 1}
-                            </Text>
-                            {references.length > 1 && (
-                              <IconButton
-                                icon={<FiX />}
-                                size="sm"
-                                colorScheme="red"
-                                variant="ghost"
-                                onClick={() => handleRemoveReference(index)}
-                                aria-label="Remove reference"
-                              />
-                            )}
-                          </HStack>
-
-                          <FormControl>
-                            <FormLabel fontSize="sm">Image</FormLabel>
-                            <Input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  handleReferenceImageChange(index, file);
-                                }
-                              }}
-                              size="sm"
-                              p={1}
-                            />
-                            {ref.image && (
-                              <HStack mt={2} spacing={2}>
-                                <Icon as={FiImage} color="green.500" />
-                                <Text fontSize="sm" color="green.600">
-                                  {ref.image.name}
-                                </Text>
-                              </HStack>
-                            )}
-                          </FormControl>
-
-                          <FormControl>
-                            <FormLabel fontSize="sm">Context Description</FormLabel>
-                            <Textarea
-                              value={ref.context}
-                              onChange={(e) => handleReferenceContextChange(index, e.target.value)}
-                              placeholder="e.g., In this image you can see that there is no field names are present like Name, Address, DOB etc. The document has a photo on the left side..."
-                              rows={3}
-                              size="sm"
-                            />
-                            <FormHelperText fontSize="xs">
-                              Describe what's visible in the image, layout, field names, unique characteristics, etc.
-                            </FormHelperText>
-                          </FormControl>
-                        </VStack>
-                      </CardBody>
-                    </Card>
-                  ))}
-
-                  {references.length < 5 && (
-                    <Button
-                      onClick={handleAddReference}
-                      variant="outline"
-                      colorScheme="blue"
-                      size="sm"
-                      leftIcon={<Icon as={FiImage} />}
-                    >
-                      Add Another Reference Image ({references.length}/5)
-                    </Button>
-                  )}
-                </VStack>
-              </FormControl>
 
               <FormControl display="flex" alignItems="center">
                 <FormLabel mb="0">Active Status</FormLabel>
