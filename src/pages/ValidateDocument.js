@@ -15,11 +15,13 @@ import {
   Image,
   Badge,
   Divider,
+  Code,
   Spinner,
   Alert,
   AlertIcon,
   AlertTitle,
   AlertDescription,
+  SimpleGrid,
   Tab,
   TabList,
   TabPanel,
@@ -28,7 +30,7 @@ import {
   IconButton,
   Input
 } from '@chakra-ui/react';
-import { FiUpload, FiCheckCircle, FiXCircle, FiFile, FiX } from 'react-icons/fi';
+import { FiUpload, FiCheckCircle, FiXCircle, FiFile, FiImage, FiX } from 'react-icons/fi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
 import { validateDocument, validateDocumentWithSupporting } from '../services/api';
@@ -84,6 +86,13 @@ const ValidateDocument = () => {
     fetchAgents();
   }, [fetchAgents]);
 
+  // Convert s3://bucket/path to https://bucket.s3.amazonaws.com/path
+  const convertS3Url = (url) => {
+    if (!url) return '';
+    return url
+      .replace(/^s3:\/\//, 'https://')                // remove s3://
+      .replace(/^https:\/\/([^/]+)\//, 'https://$1.s3.amazonaws.com/'); // add domain
+  };
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files?.[0];
@@ -568,6 +577,377 @@ const ValidateDocument = () => {
             </TabPanel>
           </TabPanels>
         </Tabs>
+
+                {/* Validation Result */}
+                {result && validationType === 'single' && (
+          <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
+            <VStack spacing={4} align="stretch">
+              <HStack justify="space-between">
+                <Heading size="md">Validation Result</Heading>
+                <HStack>
+                  <Badge
+                    colorScheme={getStatusColor(result.status)}
+                    fontSize="lg"
+                    px={3}
+                    py={1}
+                    display="flex"
+                    alignItems="center"
+                    gap={2}
+                  >
+                    <Icon
+                      as={result.status === 'pass' ? FiCheckCircle : FiXCircle}
+                    />
+                    {result.status.toUpperCase()}
+                  </Badge>
+                  <Badge colorScheme="blue" fontSize="lg" px={3} py={1}>
+                    Score: {result.score}/100
+                  </Badge>
+                </HStack>
+              </HStack>
+
+              <Divider />
+
+              <Box>
+                <Text fontWeight="bold" mb={2}>
+                  Validation Details:
+                </Text>
+                <VStack align="stretch" spacing={3}>
+                  {result.reason?.pass_conditions?.length > 0 && (
+                    <Box>
+                      <Text fontWeight="semibold" fontSize="sm" color="green.600" mb={1}>
+                        ✅ Passed Conditions:
+                      </Text>
+                      <VStack align="stretch" spacing={1} pl={4}>
+                        {result.reason.pass_conditions.map((condition, index) => (
+                          <Text key={index} fontSize="sm">
+                            {condition}
+                          </Text>
+                        ))}
+                      </VStack>
+                    </Box>
+                  )}
+
+                  {result.reason?.fail_conditions?.length > 0 && (
+                    <Box>
+                      <Text fontWeight="semibold" fontSize="sm" color="red.600" mb={1}>
+                        ❌ Failed Conditions:
+                      </Text>
+                      <VStack align="stretch" spacing={1} pl={4}>
+                        {result.reason.fail_conditions.map((condition, index) => (
+                          <Text key={index} fontSize="sm">
+                            {condition}
+                          </Text>
+                        ))}
+                      </VStack>
+                    </Box>
+                  )}
+
+                  {result.reason?.user_questions?.length > 0 && (
+                    <Box>
+                      <Text fontWeight="semibold" fontSize="sm" color="blue.600" mb={1}>
+                        💬 Questions & Answers:
+                      </Text>
+                      <VStack align="stretch" spacing={1} pl={4}>
+                        {result.reason.user_questions.map((qa, index) => (
+                          <Text key={index} fontSize="sm">
+                            {qa}
+                          </Text>
+                        ))}
+                      </VStack>
+                    </Box>
+                  )}
+
+                  {result.reason?.score_explanation && (
+                    <Box>
+                      <Text fontWeight="semibold" fontSize="sm" color="gray.600" mb={1}>
+                        📊 Score Breakdown:
+                      </Text>
+                      <Text fontSize="sm" pl={4}>
+                        {result.reason.score_explanation}
+                      </Text>
+                    </Box>
+                  )}
+                </VStack>
+              </Box>
+
+              {result.tampering_status === 'enabled' && (
+                <>
+                  <Divider />
+                  <Box>
+                    <HStack justify="space-between" mb={3}>
+                      <Text fontWeight="bold">
+                        Tampering Detection:
+                      </Text>
+                      <HStack>
+                        <Badge
+                          colorScheme={result.tampering_details?.tampering_detected ? 'red' : 'green'}
+                          fontSize="md"
+                          px={3}
+                          py={1}
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                        >
+                          <Icon
+                            as={result.tampering_details?.tampering_detected ? FiXCircle : FiCheckCircle}
+                          />
+                          {result.tampering_details?.tampering_detected ? 'TAMPERING DETECTED' : 'NO TAMPERING'}
+                        </Badge>
+                        <Badge
+                          colorScheme={result.tampering_score > 70 ? 'red' : result.tampering_score > 40 ? 'orange' : 'green'}
+                          fontSize="md"
+                          px={3}
+                          py={1}
+                        >
+                          Risk Score: {result.tampering_score}/100
+                        </Badge>
+                      </HStack>
+                    </HStack>
+
+                    {result.tampering_details && (
+                      <VStack align="stretch" spacing={3}>
+                        {result.tampering_details.summary && (
+                          <Box
+                            p={3}
+                            bg={result.tampering_details.tampering_detected ? 'red.50' : 'green.50'}
+                            borderRadius="md"
+                            borderWidth="1px"
+                            borderColor={result.tampering_details.tampering_detected ? 'red.200' : 'green.200'}
+                          >
+                            <Text fontSize="sm" fontWeight="semibold" mb={1}>
+                              {result.tampering_details.tampering_detected ? '⚠️' : '✅'} Summary:
+                            </Text>
+                            <Text fontSize="sm">
+                              {result.tampering_details.summary}
+                            </Text>
+                          </Box>
+                        )}
+
+                        {result.tampering_details.confidence && (
+                          <HStack>
+                            <Text fontSize="sm" fontWeight="semibold">
+                              Confidence Level:
+                            </Text>
+                            <Badge
+                              colorScheme={
+                                result.tampering_details.confidence === 'high' ? 'red' :
+                                  result.tampering_details.confidence === 'medium' ? 'orange' : 'yellow'
+                              }
+                            >
+                              {result.tampering_details.confidence.toUpperCase()}
+                            </Badge>
+                          </HStack>
+                        )}
+
+                        {result.tampering_details.indicators?.length > 0 && (
+                          <Box>
+                            <Text fontWeight="semibold" fontSize="sm" mb={2}>
+                              🔍 Detected Issues:
+                            </Text>
+                            <VStack align="stretch" spacing={2} pl={4}>
+                              {result.tampering_details.indicators.map((indicator, index) => (
+                                <Box
+                                  key={index}
+                                  p={3}
+                                  bg={dropBg}
+                                  borderRadius="md"
+                                  borderLeftWidth="4px"
+                                  borderLeftColor={
+                                    indicator.severity === 'high' ? 'red.500' :
+                                      indicator.severity === 'medium' ? 'orange.500' : 'yellow.500'
+                                  }
+                                >
+                                  <HStack justify="space-between" mb={1}>
+                                    <Text fontSize="sm" fontWeight="bold">
+                                      {indicator.type.replace(/_/g, ' ').toUpperCase()}
+                                    </Text>
+                                    <Badge
+                                      colorScheme={
+                                        indicator.severity === 'high' ? 'red' :
+                                          indicator.severity === 'medium' ? 'orange' : 'yellow'
+                                      }
+                                      size="sm"
+                                    >
+                                      {indicator.severity}
+                                    </Badge>
+                                  </HStack>
+                                  <Text fontSize="xs" color="gray.600" mb={1}>
+                                    {indicator.description}
+                                  </Text>
+                                  <Text fontSize="xs" color="gray.500">
+                                    Location: {indicator.location}
+                                  </Text>
+                                </Box>
+                              ))}
+                            </VStack>
+                          </Box>
+                        )}
+                      </VStack>
+                    )}
+                  </Box>
+                </>
+              )}
+
+              <Divider />
+
+              <Box>
+                <Text fontWeight="bold" mb={2}>
+                  Document Information:
+                </Text>
+                <VStack align="stretch" spacing={2}>
+                  <HStack>
+                    <Text fontSize="sm" fontWeight="semibold" minW="120px">
+                      Document Type:
+                    </Text>
+                    <Badge>{result.document_type || 'Unknown'}</Badge>
+                  </HStack>
+                  {result.file_name && (
+                    <HStack>
+                      <Text fontSize="sm" fontWeight="semibold" minW="120px">
+                        File Name:
+                      </Text>
+                      <Text fontSize="sm">{result.file_name}</Text>
+                    </HStack>
+                  )}
+                </VStack>
+              </Box>
+
+              {result.ocr_extraction_status && (
+                <>
+                  <Divider />
+                  <Box>
+                    <HStack justify="space-between" mb={3}>
+                      <Text fontWeight="bold">
+                        OCR Extraction Quality:
+                      </Text>
+                      <HStack>
+                        <Badge
+                          colorScheme={result.ocr_extraction_status === 'pass' ? 'green' : 'orange'}
+                          fontSize="md"
+                          px={3}
+                          py={1}
+                          display="flex"
+                          alignItems="center"
+                          gap={2}
+                        >
+                          <Icon
+                            as={result.ocr_extraction_status === 'pass' ? FiCheckCircle : FiXCircle}
+                          />
+                          {result.ocr_extraction_status.toUpperCase()}
+                        </Badge>
+                        {result.ocr_extraction_confidence !== null && result.ocr_extraction_confidence !== undefined && (
+                          <Badge
+                            colorScheme={
+                              result.ocr_extraction_confidence >= 80 ? 'green' :
+                                result.ocr_extraction_confidence >= 60 ? 'orange' : 'red'
+                            }
+                            fontSize="md"
+                            px={3}
+                            py={1}
+                          >
+                            Confidence: {result.ocr_extraction_confidence.toFixed(1)}%
+                          </Badge>
+                        )}
+                      </HStack>
+                    </HStack>
+
+                    {result.ocr_extraction_reason && (
+                      <Box
+                        p={3}
+                        bg={result.ocr_extraction_status === 'pass' ? 'green.50' : 'orange.50'}
+                        borderRadius="md"
+                        borderWidth="1px"
+                        borderColor={result.ocr_extraction_status === 'pass' ? 'green.200' : 'orange.200'}
+                      >
+                        <Text fontSize="sm" fontWeight="semibold" mb={1}>
+                          {result.ocr_extraction_status === 'pass' ? '✅' : '⚠️'} Details:
+                        </Text>
+                        <Text fontSize="sm">
+                          {result.ocr_extraction_reason}
+                        </Text>
+                      </Box>
+                    )}
+                  </Box>
+                </>
+              )}
+
+              <Divider />
+
+              <Box>
+                <Text fontWeight="bold" mb={2}>
+                  Extracted Data:
+                </Text>
+                <Code
+                  display="block"
+                  whiteSpace="pre"
+                  p={4}
+                  borderRadius="md"
+                  overflowX="auto"
+                >
+                  {JSON.stringify(result.doc_extracted_json, null, 2)}
+                </Code>
+              </Box>
+
+              {result.reference_images && result.reference_images.length > 0 && (
+                <>
+                  <Divider />
+                  <Box>
+                    <HStack mb={3}>
+                      <Icon as={FiImage} boxSize={5} />
+                      <Text fontWeight="bold">
+                        Reference Images Used:
+                      </Text>
+                      <Badge colorScheme="blue">
+                        {result.reference_images.length} image{result.reference_images.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </HStack>
+
+                    <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={4}>
+                      {result.reference_images.map((imageUrl, index) => {
+                        const httpUrl = convertS3Url(imageUrl);
+                        return (
+                          <Box
+                            key={index}
+                            p={2}
+                            borderWidth="1px"
+                            borderColor={borderColor}
+                            borderRadius="md"
+                            bg={bg}
+                            cursor="pointer"
+                            onClick={() => window.open(httpUrl, '_blank')}
+                          >
+                            <Image
+                              src={httpUrl}
+                              alt={`Reference ${index + 1}`}
+                              objectFit="cover"
+                              borderRadius="md"
+                              maxH="200px"
+                              w="full"
+                            />
+                            <Text fontSize="xs" textAlign="center" mt={2}>
+                              Image {index + 1}
+                            </Text>
+                          </Box>
+                        );
+                      })}
+                    </SimpleGrid>
+                  </Box>
+                </>
+              )}
+
+              <Divider />
+
+              <HStack justify="space-between">
+                <Text fontSize="sm" color="gray.500">
+                  Processing Time: {result.processing_time_ms}ms
+                </Text>
+                <Text fontSize="sm" color="gray.500">
+                  Agent: {result.agent_name}
+                </Text>
+              </HStack>
+            </VStack>
+          </Box>
+        )}
 
         {/* Multi-Document Validation Result */}
         {result && validationType === 'multi' && (
