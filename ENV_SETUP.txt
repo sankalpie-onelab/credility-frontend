@@ -1,0 +1,59 @@
+==================================================
+ENVIRONMENT CONFIGURATION
+==================================================
+
+IMPORTANT: Create a .env file in the frontend root directory
+
+Create a file named:  .env
+
+Add this content:
+REACT_APP_API_BASE_URL=http://localhost:8000
+
+==================================================
+STEP BY STEP:
+==================================================
+
+1. In the frontend folder, create a new file called .env
+   (Same folder as package.json)
+
+2. Add this single line to the file:
+   REACT_APP_API_BASE_URL=http://localhost:8000
+
+3. Save the file
+
+4. If the development server is already running, restart it:
+   - Press Ctrl+C to stop
+   - Run: npm start
+
+==================================================
+ALTERNATIVE BASE URLS:
+==================================================
+
+For different backend configurations, change the URL:
+
+Local backend:
+REACT_APP_API_BASE_URL=http://localhost:8000
+
+Backend on different port:
+REACT_APP_API_BASE_URL=http://localhost:3001
+
+Remote backend:
+REACT_APP_API_BASE_URL=https://api.example.com
+
+==================================================
+VERIFICATION:
+==================================================
+
+After creating .env, the app should:
+✅ Connect to the backend API
+✅ Load agents successfully
+✅ Allow document validation
+
+If you see connection errors:
+❌ Check if .env file exists
+❌ Check if backend is running
+❌ Check the URL in .env is correct
+❌ Restart the development server
+
+==================================================
+
