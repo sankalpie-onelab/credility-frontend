@@ -19,8 +19,8 @@ import {
 } from '@chakra-ui/react';
 import { FiMoon, FiSun, FiMenu, FiUser, FiLogOut } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import { getCreatorId } from '../../utils/storage';
-import { logout, getAuthData } from '../../utils/auth';
+import { getCreatorId, getUserDisplayName } from '../../utils/storage';
+import { logout, getAuthData, getCurrentUser } from '../../utils/auth';
 import logo from "../../assets/credility_logo.png";
 
 const Navbar = ({ onMenuClick }) => {
@@ -30,6 +30,8 @@ const Navbar = ({ onMenuClick }) => {
   const navigate = useNavigate();
   const creatorId = getCreatorId();
   const authData = getAuthData();
+  const user = getCurrentUser();
+  const displayName = getUserDisplayName();
 
   const handleLogout = () => {
     logout();
@@ -79,25 +81,32 @@ const Navbar = ({ onMenuClick }) => {
               size="sm"
             >
               <Text display={{ base: 'none', md: 'block' }}>
-                {authData?.email || creatorId.substring(0, 15) + '...'}
+                {displayName}
               </Text>
             </MenuButton>
             <MenuList>
-              {authData && (
+              {user && (
                 <>
                   <MenuItem isDisabled>
                     <Text fontSize="xs" color="gray.500">
-                      Email
+                      {user.full_name ? 'Name' : 'Email'}
                     </Text>
                   </MenuItem>
                   <MenuItem isDisabled>
                     <Text fontSize="xs">
-                      {authData.email}
+                      {displayName}
                     </Text>
                   </MenuItem>
+                  {user.full_name && (
+                    <MenuItem isDisabled>
+                      <Text fontSize="xs" color="gray.500">
+                        Email: {user.email}
+                      </Text>
+                    </MenuItem>
+                  )}
                   <MenuItem isDisabled>
                     <Text fontSize="xs" color="gray.500">
-                      Role: {authData.role}
+                      Role: {user.role}
                     </Text>
                   </MenuItem>
                   <MenuDivider />

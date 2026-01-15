@@ -1,45 +1,63 @@
 // Local Storage utility functions
+import { getCurrentUser } from './auth';
 
 const CREATOR_ID_KEY = 'credibility_creator_id';
 const USER_ID_KEY = 'credibility_user_id';
 
-// Generate a unique ID
+// Generate a unique ID (fallback for non-authenticated users)
 export const generateId = (prefix = 'user') => {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 9);
   return `${prefix}_${timestamp}_${random}`;
 };
 
-// Creator ID Management
+// Creator ID Management - Uses authenticated user's ID
 export const getCreatorId = () => {
+  const user = getCurrentUser();
+  if (user && user.id) {
+    return String(user.id);
+  }
+  
+  // Fallback to localStorage if not authenticated
   let creatorId = localStorage.getItem(CREATOR_ID_KEY);
   if (!creatorId) {
     creatorId = generateId('creator');
-    // localStorage.setItem(CREATOR_ID_KEY, creatorId);
-    localStorage.setItem(CREATOR_ID_KEY, "user_111");
+    localStorage.setItem(CREATOR_ID_KEY, creatorId);
   }
-  // return creatorId;
-  return "user_111"
+  return creatorId;
 };
 
 export const setCreatorId = (id) => {
   localStorage.setItem(CREATOR_ID_KEY, id);
 };
 
-// User ID Management (for document validation)
+// User ID Management (for document validation) - Uses authenticated user's ID
 export const getUserId = () => {
+  const user = getCurrentUser();
+  if (user && user.id) {
+    return String(user.id);
+  }
+  
+  // Fallback to localStorage if not authenticated
   let userId = localStorage.getItem(USER_ID_KEY);
   if (!userId) {
     userId = generateId('user');
-    // localStorage.setItem(USER_ID_KEY, userId);
-    localStorage.setItem(USER_ID_KEY, "dev123");
+    localStorage.setItem(USER_ID_KEY, userId);
   }
-  // return userId;
-  return "dev123"
+  return userId;
 };
 
 export const setUserId = (id) => {
   localStorage.setItem(USER_ID_KEY, id);
+};
+
+// Get user display name (full_name or email)
+export const getUserDisplayName = () => {
+  const user = getCurrentUser();
+  if (user) {
+    return user.full_name || user.email || 'User';
+  }
+  return 'Guest';
 };
 
 // Generic storage functions
