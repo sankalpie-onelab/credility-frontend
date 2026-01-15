@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getToken, logout } from '../utils/auth';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.255:8000';
 // let API_BASE_URL;
@@ -12,12 +13,43 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://13.233.155.25
 // }
 
 console.log("The API_BASE_URL is: ", process.env.REACT_APP_API_BASE_URL);
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Request interceptor to add JWT token to all requests
+api.interceptors.request.use(
+  (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor to handle 401 errors (unauthorized)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid - logout user
+      logout();
+      // Redirect to login page
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Agent Management APIs
 export const createAgent = async (agentData) => {
@@ -101,6 +133,20 @@ export const getCreatorStats = async (creatorId) => {
 
 export const getAgentHitCount = async (agentName) => {
   const response = await api.get(`/api/agent/${agentName}/count`);
+  return response.data;
+};
+
+// Authentication API
+export const login = async (email, password) => {
+  const response = await api.post('/api/auth/login', {
+    email,
+    password,
+  });
+  return response.data;
+};
+
+export const getCurrentUser = async () => {
+  const response = await api.get('/api/auth/me');
   return response.data;
 };
 

@@ -17,27 +17,9 @@ import {
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../utils/auth';
+import { setAuth } from '../utils/auth';
+import { login as apiLogin } from '../services/api';
 import logo from '../assets/credility_logo.png';
-
-// Hard-coded credentials - In production, these should be environment variables
-const CREATOR_LOGIN_EMAIL = 'user_111@gmail.com';
-const CREATOR_LOGIN_PASSWORD = 'user_111@12345';
-const CONSUMER_LOGIN_EMAIL = 'dev123@gmail.com';
-const CONSUMER_LOGIN_PASSWORD = 'dev123@12345';
-
-const CREDENTIALS = {
-  CREATOR: {
-    email: CREATOR_LOGIN_EMAIL,
-    password: CREATOR_LOGIN_PASSWORD,
-    role: 'creator'
-  },
-  CONSUMER: {
-    email: CONSUMER_LOGIN_EMAIL,
-    password: CONSUMER_LOGIN_PASSWORD,
-    role: 'consumer'
-  }
-};
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -47,51 +29,66 @@ function Login() {
   const navigate = useNavigate();
   const toast = useToast();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please enter both email and password',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
     setIsLoading(true);
 
-    // Check credentials
-    const isCreator = 
-      email === CREDENTIALS.CREATOR.email && 
-      password === CREDENTIALS.CREATOR.password;
-    
-    const isConsumer = 
-      email === CREDENTIALS.CONSUMER.email && 
-      password === CREDENTIALS.CONSUMER.password;
-
-    setTimeout(() => {
-      if (isCreator) {
-        login(CREDENTIALS.CREATOR.email, CREDENTIALS.CREATOR.role);
-        toast({
-          title: 'Login Successful',
-          description: 'Welcome back, Creator!',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
+    try {
+      // Call backend login API
+      const response = await apiLogin(email, password);
+      
+      // Store authentication data
+      setAuth(response.access_token, response.user);
+      
+      // Show success message
+      const roleDisplay = response.user.role === 'creator' ? 'Creator' : 
+                          response.user.role === 'consumer' ? 'Consumer' : 'User';
+      
+      toast({
+        title: 'Login Successful',
+        description: `Welcome back, ${roleDisplay}!`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      
+      // Navigate based on role
+      if (response.user.role === 'creator') {
         navigate('/');
-      } else if (isConsumer) {
-        login(CREDENTIALS.CONSUMER.email, CREDENTIALS.CONSUMER.role);
-        toast({
-          title: 'Login Successful',
-          description: 'Welcome back, Consumer!',
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
+      } else if (response.user.role === 'consumer') {
         navigate('/validate');
       } else {
-        toast({
-          title: 'Login Failed',
-          description: 'Invalid email or password',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
+        navigate('/');
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      
+      const errorMessage = error.response?.data?.detail || 
+                          error.message || 
+                          'Invalid email or password';
+      
+      toast({
+        title: 'Login Failed',
+        description: errorMessage,
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   return (
