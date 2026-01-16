@@ -22,18 +22,13 @@ import {
   AlertTitle,
   AlertDescription,
   SimpleGrid,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
   IconButton,
   Input
 } from '@chakra-ui/react';
 import { FiUpload, FiCheckCircle, FiXCircle, FiFile, FiImage, FiX } from 'react-icons/fi';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
-import { validateDocument, validateDocumentWithSupporting } from '../services/api';
+import { validateDocument } from '../services/api';
 import { getCreatorId, getUserId } from '../utils/storage';
 import { getStatusColor, formatFileSize, isValidFileType } from '../utils/helpers';
 
@@ -45,12 +40,12 @@ const ValidateDocument = () => {
   const [selectedAgent, setSelectedAgent] = useState(searchParams.get('agent') || '');
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+  const [singleFiles, setSingleFiles] = useState([]);
+  const [singleLinks, setSingleLinks] = useState([]);
+  const [newLink, setNewLink] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingAgents, setLoadingAgents] = useState(true);
   const [result, setResult] = useState(null);
-  const [validationType, setValidationType] = useState('single');
-  const [supportingFiles, setSupportingFiles] = useState([]);
-  const [supportingFileDescriptions, setSupportingFileDescriptions] = useState([]);
 
   const bg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
@@ -94,83 +89,133 @@ const ValidateDocument = () => {
       .replace(/^https:\/\/([^/]+)\//, 'https://$1.s3.amazonaws.com/'); // add domain
   };
 
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
+  const isValidLink = (value) => {
+    // Accept any non-empty string, including database keys or internal IDs.
+    // If you later need stricter rules, add them here.
+    return Boolean(value && value.trim());
+  };
 
-    if (!isValidFileType(selectedFile)) {
+  const handleFileChange = (e) => {
+    const selectedFiles = Array.from(e.target.files || []);
+
+    // Single Document - allow up to 3 files (combined with links)
+    if (selectedFiles.length === 0) return;
+
+    const remainingSlots = 3 - (singleFiles.length + singleLinks.length);
+    if (remainingSlots <= 0) {
       toast({
-        title: 'Invalid file type',
-        description: 'Please upload PDF, JPG, JPEG, or PNG files only',
-        status: 'error',
-        duration: 5000,
+        title: 'Maximum items reached',
+        description: 'You can add up to 3 files/links in total',
+        status: 'info',
+        duration: 3000,
         isClosable: true,
       });
       return;
     }
 
-    setFile(selectedFile);
+    const filesToAdd = selectedFiles.slice(0, remainingSlots);
+    const validFiles = filesToAdd.filter(isValidFileType);
+
+    if (validFiles.length !== filesToAdd.length) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Some files were skipped. Only PDF, JPG, JPEG, or PNG files are allowed',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+
+    const updatedFiles = [...singleFiles, ...validFiles];
+    setSingleFiles(updatedFiles);
+
+    // Keep legacy `file`/preview in sync with the first file so existing logic still works
+    const firstFile = updatedFiles[0] || null;
+    setFile(firstFile);
     setResult(null);
 
-    if (selectedFile.type.startsWith('image/')) {
+    if (firstFile && firstFile.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreview(reader.result);
       };
-      reader.readAsDataURL(selectedFile);
+      reader.readAsDataURL(firstFile);
+    } else {
+      setPreview(null);
+    }
+
+    if (updatedFiles.length + singleLinks.length >= 3) {
+      toast({
+        title: 'Maximum items reached',
+        description: 'You can add up to 3 files/links in total',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleRemoveSingleFile = (index) => {
+    const updated = singleFiles.filter((_, i) => i !== index);
+    setSingleFiles(updated);
+
+    const firstFile = updated[0] || null;
+    setFile(firstFile);
+
+    if (firstFile && firstFile.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result);
+      };
+      reader.readAsDataURL(firstFile);
     } else {
       setPreview(null);
     }
   };
 
-  const handleSupportingFileChange = (e) => {
-  const selectedFiles = Array.from(e.target.files || []);
-  
-  const validFiles = selectedFiles.filter(f => isValidFileType(f));
-  
-  if (validFiles.length !== selectedFiles.length) {
-    toast({
-      title: 'Invalid file type',
-      description: 'Some files were skipped. Only PDF, JPG, JPEG, or PNG files are allowed',
-      status: 'warning',
-      duration: 5000,
-      isClosable: true,
-    });
-  }
+  const handleAddLink = () => {
+    const trimmed = newLink.trim();
+    if (!trimmed) return;
 
-  const newFiles = [...supportingFiles, ...validFiles].slice(0, 5);
-  setSupportingFiles(newFiles);
-  
-  // Add empty descriptions for new files
-  const newDescriptions = [...supportingFileDescriptions];
-  validFiles.forEach(() => {
-    newDescriptions.push('');
-  });
-  setSupportingFileDescriptions(newDescriptions.slice(0, 5));
-  
-  setResult(null);
+    if (!isValidLink(trimmed)) {
+      toast({
+        title: 'Invalid link',
+        description: 'Please enter a valid URL (http/https) or a valid database/internal link identifier.',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+      return;
+    }
 
-  if (newFiles.length >= 5) {
-    toast({
-      title: 'Maximum files reached',
-      description: 'You can upload up to 5 supporting documents',
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
-    });
-  }
-};
+    if (singleFiles.length + singleLinks.length >= 3) {
+      toast({
+        title: 'Maximum items reached',
+        description: 'You can add up to 3 files/links in total',
+        status: 'info',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
 
-  const removeSupportingFile = (index) => {
-  setSupportingFiles(supportingFiles.filter((_, i) => i !== index));
-  setSupportingFileDescriptions(supportingFileDescriptions.filter((_, i) => i !== index));
-};
+    setSingleLinks([...singleLinks, trimmed]);
+    setNewLink('');
+    setResult(null);
+  };
+
+  const handleRemoveLink = (index) => {
+    setSingleLinks(singleLinks.filter((_, i) => i !== index));
+  };
 
   const handleValidate = async () => {
-    if (!file) {
+    // Collect up to 3 files from singleFiles array
+    const filesToSend = singleFiles.slice(0, 3);
+
+    if (filesToSend.length === 0 && (!file && singleFiles.length === 0)) {
       toast({
         title: 'No file selected',
-        description: 'Please select a document to validate',
+        description: 'Please select at least one document file to validate',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -189,55 +234,33 @@ const ValidateDocument = () => {
       return;
     }
 
-    if (validationType === 'multi' && supportingFiles.length === 0) {
-      toast({
-        title: 'No supporting documents',
-        description: 'Please upload at least one supporting document for cross-validation',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
     setLoading(true);
     try {
-      if (validationType === 'single') {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('user_id', userId);
-
-        const validationResult = await validateDocument(selectedAgent, formData);
-        setResult(validationResult);
-
-        toast({
-          title: 'Validation complete',
-          description: `Document ${validationResult.status} with score: ${validationResult.score}/100`,
-          status: validationResult.status === 'pass' ? 'success' : 'error',
-          duration: 5000,
-          isClosable: true,
-        });
-      } else {
-        const formData = new FormData();
-        formData.append('main_file', file);
-        formData.append('user_id', userId);
-        
-        supportingFiles.forEach((suppFile, index) => {
-          formData.append(`supporting_file_${index + 1}`, suppFile);
-          formData.append(`supporting_file_${index + 1}_description`, supportingFileDescriptions[index] || '');
-        });
-
-        const validationResult = await validateDocumentWithSupporting(selectedAgent, formData);
-        setResult(validationResult);
-
-        toast({
-          title: 'Cross-validation complete',
-          description: validationResult.overall_message,
-          status: validationResult.overall_status === 'pass' ? 'success' : 'error',
-          duration: 5000,
-          isClosable: true,
-        });
+      const formData = new FormData();
+      const fileList = [];
+      
+      filesToSend.forEach((file) => {
+        fileList.push(file);
+      });
+      if (singleLinks.length > 0) {
+        fileList.push(...singleLinks);
       }
+      formData.append('files', fileList);
+      formData.append('user_id', userId);
+
+      const validationResult = await validateDocument(selectedAgent, formData);
+      setResult(validationResult);
+
+      const status = validationResult.final_status?.status || validationResult.status || 'unknown';
+      const score = validationResult.score || 0;
+
+      toast({
+        title: 'Validation complete',
+        description: `Document ${status} with score: ${score}/100`,
+        status: status === 'pass' ? 'success' : 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     } catch (error) {
       toast({
         title: 'Validation failed',
@@ -255,8 +278,9 @@ const ValidateDocument = () => {
     setFile(null);
     setPreview(null);
     setResult(null);
-    setSupportingFiles([]);
-    setSupportingFileDescriptions([]);
+    setSingleFiles([]);
+    setSingleLinks([]);
+    setNewLink('');
   };
 
   if (loadingAgents) {
@@ -331,24 +355,9 @@ const ValidateDocument = () => {
           </FormControl>
         </Box>
 
-        <Tabs 
-          variant="enclosed" 
-          colorScheme="blue"
-          onChange={(index) => {
-            setValidationType(index === 0 ? 'single' : 'multi');
-            setResult(null);
-          }}
-        >
-          <TabList>
-            <Tab>Single Document Validation</Tab>
-            <Tab>Agentic Multi-Doc Cross Validation</Tab>
-          </TabList>
-
-          <TabPanels>
-            {/* Single Document Validation */}
-            <TabPanel px={0}>
-              <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
-                <VStack spacing={4}>
+        {/* Single Document Validation */}
+        <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
+          <VStack spacing={4}>
                   <Box
                     w="full"
                     p={8}
@@ -366,6 +375,7 @@ const ValidateDocument = () => {
                       id="file-input"
                       type="file"
                       accept=".pdf,.jpg,.jpeg,.png"
+                      multiple
                       onChange={handleFileChange}
                       style={{ display: 'none' }}
                     />
@@ -374,28 +384,88 @@ const ValidateDocument = () => {
                       Click to upload or drag and drop
                     </Text>
                     <Text fontSize="sm" color="gray.500">
-                      PDF, JPG, JPEG, or PNG (MAX. 10MB)
+                      Up to 3 items total (files and/or links). PDF, JPG, JPEG, or PNG (MAX. 10MB per file)
                     </Text>
                   </Box>
 
-                  {file && (
-                    <Box w="full" p={4} bg={dropBg} borderRadius="md">
-                      <HStack justify="space-between">
-                        <HStack>
-                          <Icon as={FiFile} boxSize={6} />
-                          <VStack align="start" spacing={0}>
-                            <Text fontWeight="bold">{file.name}</Text>
-                            <Text fontSize="sm" color="gray.500">
-                              {formatFileSize(file.size)}
-                            </Text>
-                          </VStack>
-                        </HStack>
-                        <Button size="sm" onClick={handleReset}>
-                          Remove
-                        </Button>
+                  {(singleFiles.length > 0 || singleLinks.length > 0) && (
+                    <Box w="full">
+                      <HStack justify="space-between" mb={2}>
+                        <Text fontWeight="bold" fontSize="sm">
+                          Selected Items
+                        </Text>
+                        <Badge colorScheme="blue">
+                          {singleFiles.length + singleLinks.length}/3
+                        </Badge>
                       </HStack>
+
+                      <VStack spacing={2} align="stretch">
+                        {singleFiles.map((f, index) => (
+                          <Box key={`file-${index}`} w="full" p={3} bg={dropBg} borderRadius="md">
+                            <HStack justify="space-between">
+                              <HStack>
+                                <Icon as={FiFile} boxSize={5} />
+                                <VStack align="start" spacing={0}>
+                                  <Text fontWeight="bold" fontSize="sm">
+                                    {f.name}
+                                  </Text>
+                                  <Text fontSize="xs" color="gray.500">
+                                    {formatFileSize(f.size)}
+                                    {index === 0 && ' • Used for validation'}
+                                  </Text>
+                                </VStack>
+                              </HStack>
+                              <IconButton
+                                size="sm"
+                                icon={<FiX />}
+                                aria-label="Remove file"
+                                onClick={() => handleRemoveSingleFile(index)}
+                              />
+                            </HStack>
+                          </Box>
+                        ))}
+
+                        {singleLinks.map((link, index) => (
+                          <Box key={`link-${index}`} w="full" p={3} bg={dropBg} borderRadius="md">
+                            <HStack justify="space-between" align="flex-start">
+                              <VStack align="start" spacing={0}>
+                                <Text fontSize="xs" color="gray.500">
+                                  Link {index + 1}
+                                </Text>
+                                <Text fontSize="sm" noOfLines={2} wordBreak="break-all">
+                                  {link}
+                                </Text>
+                              </VStack>
+                              <IconButton
+                                size="sm"
+                                icon={<FiX />}
+                                aria-label="Remove link"
+                                onClick={() => handleRemoveLink(index)}
+                              />
+                            </HStack>
+                          </Box>
+                        ))}
+                      </VStack>
                     </Box>
                   )}
+
+                  {/* Add link input */}
+                  <HStack w="full" spacing={2}>
+                    <Input
+                      placeholder="Paste document link (URL or database/internal link)"
+                      value={newLink}
+                      onChange={(e) => setNewLink(e.target.value)}
+                      size="sm"
+                      isDisabled={singleFiles.length + singleLinks.length >= 3}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleAddLink}
+                      isDisabled={!newLink.trim() || singleFiles.length + singleLinks.length >= 3}
+                    >
+                      Add Link
+                    </Button>
+                  </HStack>
 
                   {preview && (
                     <Box w="full" maxW="500px">
@@ -409,184 +479,23 @@ const ValidateDocument = () => {
                     w="full"
                     onClick={handleValidate}
                     isLoading={loading}
-                    isDisabled={!file || !selectedAgent}
+                    isDisabled={(!file && singleFiles.length === 0) || !selectedAgent}
                     leftIcon={<Icon as={FiCheckCircle} />}
                   >
                     Validate Document
                   </Button>
                 </VStack>
               </Box>
-            </TabPanel>
 
-            {/* Multi-Document Cross Validation */}
-            <TabPanel px={0}>
-              <VStack spacing={6}>
-                {/* Main Document */}
-                <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor} w="full">
-                  <Text fontWeight="bold" mb={4}>Main Document</Text>
-                  <VStack spacing={4}>
-                    <Box
-                      w="full"
-                      p={8}
-                      bg={dropBg}
-                      borderWidth="2px"
-                      borderStyle="dashed"
-                      borderColor={borderColor}
-                      borderRadius="lg"
-                      textAlign="center"
-                      cursor="pointer"
-                      _hover={{ borderColor: 'blue.400' }}
-                      onClick={() => document.getElementById('main-file-input').click()}
-                    >
-                      <input
-                        id="main-file-input"
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={handleFileChange}
-                        style={{ display: 'none' }}
-                      />
-                      <Icon as={FiUpload} boxSize={12} color="gray.400" mb={4} />
-                      <Text fontSize="lg" fontWeight="bold" mb={2}>
-                        Click to upload main document
-                      </Text>
-                      <Text fontSize="sm" color="gray.500">
-                        PDF, JPG, JPEG, or PNG (MAX. 10MB)
-                      </Text>
-                    </Box>
-
-                    {file && (
-                      <Box w="full" p={4} bg={dropBg} borderRadius="md">
-                        <HStack justify="space-between">
-                          <HStack>
-                            <Icon as={FiFile} boxSize={6} />
-                            <VStack align="start" spacing={0}>
-                              <Text fontWeight="bold">{file.name}</Text>
-                              <Text fontSize="sm" color="gray.500">
-                                {formatFileSize(file.size)}
-                              </Text>
-                            </VStack>
-                          </HStack>
-                          <Button size="sm" onClick={() => setFile(null)}>
-                            Remove
-                          </Button>
-                        </HStack>
-                      </Box>
-                    )}
-
-                    {preview && (
-                      <Box w="full" maxW="500px">
-                        <Image src={preview} alt="Preview" borderRadius="md" />
-                      </Box>
-                    )}
-                  </VStack>
-                </Box>
-
-                {/* Supporting Documents */}
-                <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor} w="full">
-                  <HStack justify="space-between" mb={4}>
-                    <Text fontWeight="bold">Supporting Documents</Text>
-                    <Badge colorScheme="blue">
-                      {supportingFiles.length}/5 uploaded
-                    </Badge>
-                  </HStack>
-                  
-                  <VStack spacing={4}>
-                    <Box
-                      w="full"
-                      p={8}
-                      bg={dropBg}
-                      borderWidth="2px"
-                      borderStyle="dashed"
-                      borderColor={borderColor}
-                      borderRadius="lg"
-                      textAlign="center"
-                      cursor="pointer"
-                      _hover={{ borderColor: 'blue.400' }}
-                      onClick={() => document.getElementById('supporting-files-input').click()}
-                      opacity={supportingFiles.length >= 5 ? 0.5 : 1}
-                      pointerEvents={supportingFiles.length >= 5 ? 'none' : 'auto'}
-                    >
-                      <input
-                        id="supporting-files-input"
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png"
-                        onChange={handleSupportingFileChange}
-                        multiple
-                        style={{ display: 'none' }}
-                        disabled={supportingFiles.length >= 5}
-                      />
-                      <Icon as={FiUpload} boxSize={12} color="gray.400" mb={4} />
-                      <Text fontSize="lg" fontWeight="bold" mb={2}>
-                        Click to upload supporting documents
-                      </Text>
-                      <Text fontSize="sm" color="gray.500">
-                        Upload up to 5 supporting documents (PDF, JPG, JPEG, PNG)
-                      </Text>
-                    </Box>
-
-                    {supportingFiles.map((suppFile, index) => (
-  <Box key={index} w="full">
-    <Box w="full" p={4} bg={dropBg} borderRadius="md" mb={2}>
-      <HStack justify="space-between">
-        <HStack>
-          <Badge colorScheme="purple">{index + 1}</Badge>
-          <Icon as={FiFile} boxSize={6} />
-          <VStack align="start" spacing={0}>
-            <Text fontWeight="bold">{suppFile.name}</Text>
-            <Text fontSize="sm" color="gray.500">
-              {formatFileSize(suppFile.size)}
-            </Text>
-          </VStack>
-        </HStack>
-        <IconButton
-          size="sm"
-          icon={<FiX />}
-          onClick={() => removeSupportingFile(index)}
-          aria-label="Remove file"
-        />
-      </HStack>
-    </Box>
-    <Input
-      placeholder={`Description (optional) - e.g., "Medical bill for insurance claim"`}
-      size="sm"
-      value={supportingFileDescriptions[index] || ''}
-      onChange={(e) => {
-        const newDescriptions = [...supportingFileDescriptions];
-        newDescriptions[index] = e.target.value;
-        setSupportingFileDescriptions(newDescriptions);
-      }}
-      mb={4}
-    />
-  </Box>
-))}
-                  </VStack>
-                </Box>
-
-                <Button
-                  colorScheme="blue"
-                  size="lg"
-                  w="full"
-                  onClick={handleValidate}
-                  isLoading={loading}
-                  isDisabled={!file || !selectedAgent || supportingFiles.length === 0}
-                  leftIcon={<Icon as={FiCheckCircle} />}
-                >
-                  Run Agentic Cross Validation
-                </Button>
-              </VStack>
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-
-                {/* Validation Result */}
-                {result && validationType === 'single' && (
+        {/* Validation Result */}
+        {result && (
           <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
             <VStack spacing={4} align="stretch">
               <HStack justify="space-between">
                 <Heading size="md">Validation Result</Heading>
                 <HStack>
                   <Badge
-                    colorScheme={getStatusColor(result.status)}
+                    colorScheme={getStatusColor(result.final_status?.status || result.status)}
                     fontSize="lg"
                     px={3}
                     py={1}
@@ -595,80 +504,356 @@ const ValidateDocument = () => {
                     gap={2}
                   >
                     <Icon
-                      as={result.status === 'pass' ? FiCheckCircle : FiXCircle}
+                      as={(result.final_status?.status || result.status) === 'pass' ? FiCheckCircle : FiXCircle}
                     />
-                    {result.status.toUpperCase()}
+                    {(result.final_status?.status || result.status)?.toUpperCase()}
                   </Badge>
                   <Badge colorScheme="blue" fontSize="lg" px={3} py={1}>
                     Score: {result.score}/100
                   </Badge>
+                  {result.final_status?.manual_review === 'YES' && (
+                    <Badge colorScheme="orange" fontSize="lg" px={3} py={1}>
+                      Human Verification Required
+                    </Badge>
+                  )}
                 </HStack>
               </HStack>
 
-              <Divider />
-
-              <Box>
-                <Text fontWeight="bold" mb={2}>
-                  Validation Details:
-                </Text>
-                <VStack align="stretch" spacing={3}>
-                  {result.reason?.pass_conditions?.length > 0 && (
+              {/* Final Status Alert */}
+              {result.final_status && (
+                <>
+                  <Alert
+                    status={result.final_status.status === 'pass' ? 'success' : 'error'}
+                    variant="subtle"
+                    borderRadius="md"
+                  >
+                    <AlertIcon />
                     <Box>
-                      <Text fontWeight="semibold" fontSize="sm" color="green.600" mb={1}>
-                        ✅ Passed Conditions:
-                      </Text>
-                      <VStack align="stretch" spacing={1} pl={4}>
-                        {result.reason.pass_conditions.map((condition, index) => (
-                          <Text key={index} fontSize="sm">
-                            {condition}
-                          </Text>
-                        ))}
+                      <AlertTitle>Final Status: {result.final_status.status.toUpperCase()}</AlertTitle>
+                      {result.final_status.manual_review === 'YES' && (
+                        <AlertDescription>
+                          This validation requires Human Verification. Please check the Human Verification items below.
+                        </AlertDescription>
+                      )}
+                    </Box>
+                  </Alert>
+                  <Divider />
+                </>
+              )}
+
+              {/* Human Verification Items */}
+              {result.manual_review_items && result.manual_review_items.length > 0 && (
+                <>
+                  <Box>
+                    <Heading size="sm" mb={3}>Human Verification Items</Heading>
+                    <VStack align="stretch" spacing={3}>
+                      {result.manual_review_items.map((item, index) => {
+                        const severityColor = item.severity === 'CRITICAL' ? 'red' :
+                                             item.severity === 'HIGH' ? 'orange' :
+                                             item.severity === 'MEDIUM' ? 'yellow' : 'gray';
+                        return (
+                          <Box
+                            key={index}
+                            p={4}
+                            bg={dropBg}
+                            borderRadius="md"
+                            borderLeftWidth="4px"
+                            borderLeftColor={`${severityColor}.500`}
+                          >
+                            <HStack justify="space-between" mb={2}>
+                              <Text fontWeight="bold" fontSize="sm">
+                                {item.field}
+                              </Text>
+                              <Badge colorScheme={severityColor} fontSize="xs">
+                                {item.severity}
+                              </Badge>
+                            </HStack>
+                            <Text fontSize="sm" color="gray.600" mb={2}>
+                              {item.reason}
+                            </Text>
+                            <Box
+                              p={2}
+                              bg={bg}
+                              borderRadius="sm"
+                              borderWidth="1px"
+                              borderColor={borderColor}
+                            >
+                              <Text fontSize="xs" fontWeight="semibold" color="blue.600" mb={1}>
+                                Recommended Action:
+                              </Text>
+                              <Text fontSize="xs">
+                                {item.recommended_action}
+                              </Text>
+                            </Box>
+                          </Box>
+                        );
+                      })}
+                    </VStack>
+                  </Box>
+                  <Divider />
+                </>
+              )}
+
+              {/* Documents Array Display */}
+              {result.documents && result.documents.length > 0 ? (
+                <>
+                  <Box>
+                    <Heading size="sm" mb={3}>Documents ({result.documents.length})</Heading>
+                    <VStack align="stretch" spacing={4}>
+                      {result.documents.map((doc, docIndex) => (
+                        <Box
+                          key={docIndex}
+                          p={4}
+                          bg={dropBg}
+                          borderRadius="md"
+                          borderWidth="1px"
+                          borderColor={borderColor}
+                        >
+                          <HStack justify="space-between" mb={3}>
+                            <Text fontWeight="bold" fontSize="md">
+                              Document {docIndex + 1}: {doc.doc_id}
+                            </Text>
+                            <Badge
+                              colorScheme={getStatusColor(doc.validation?.status)}
+                              fontSize="sm"
+                              px={2}
+                              py={1}
+                            >
+                              {doc.validation?.status || 'UNKNOWN'}
+                            </Badge>
+                          </HStack>
+
+                          {/* Document Validation Details */}
+                          {doc.validation?.reason && (
+                            <Box mb={3}>
+                              <VStack align="stretch" spacing={2}>
+                                {doc.validation.reason.pass_conditions?.length > 0 && (
+                                  <Box>
+                                    <Text fontWeight="semibold" fontSize="xs" color="green.600" mb={1}>
+                                      ✓ Passed Conditions:
+                                    </Text>
+                                    <VStack align="stretch" spacing={1} pl={3}>
+                                      {doc.validation.reason.pass_conditions.map((condition, index) => (
+                                        <Text key={index} fontSize="xs">
+                                          {condition}
+                                        </Text>
+                                      ))}
+                                    </VStack>
+                                  </Box>
+                                )}
+
+                                {doc.validation.reason.fail_conditions?.length > 0 && (
+                                  <Box>
+                                    <Text fontWeight="semibold" fontSize="xs" color="red.600" mb={1}>
+                                      ✗ Failed Conditions:
+                                    </Text>
+                                    <VStack align="stretch" spacing={1} pl={3}>
+                                      {doc.validation.reason.fail_conditions.map((condition, index) => (
+                                        <Text key={index} fontSize="xs">
+                                          {condition}
+                                        </Text>
+                                      ))}
+                                    </VStack>
+                                  </Box>
+                                )}
+
+                                {doc.validation.reason.user_questions?.length > 0 && (
+                                  <Box>
+                                    <Text fontWeight="semibold" fontSize="xs" color="blue.600" mb={1}>
+                                      💬 Questions & Answers:
+                                    </Text>
+                                    <VStack align="stretch" spacing={1} pl={3}>
+                                      {doc.validation.reason.user_questions.map((qa, index) => (
+                                        <Text key={index} fontSize="xs">
+                                          {qa}
+                                        </Text>
+                                      ))}
+                                    </VStack>
+                                  </Box>
+                                )}
+
+                                {doc.validation.reason.score_explanation && (
+                                  <Box>
+                                    <Text fontWeight="semibold" fontSize="xs" color="gray.600" mb={1}>
+                                      📊 Score Explanation:
+                                    </Text>
+                                    <Text fontSize="xs" pl={3}>
+                                      {doc.validation.reason.score_explanation}
+                                    </Text>
+                                  </Box>
+                                )}
+                              </VStack>
+                            </Box>
+                          )}
+
+                          {/* Extracted Fields */}
+                          {doc.extracted_fields && (
+                            <Box>
+                              <Text fontWeight="semibold" fontSize="sm" mb={2}>
+                                Extracted Fields:
+                              </Text>
+                              {doc.extracted_fields.mandatory && (
+                                <Box mb={2}>
+                                  <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={1}>
+                                    Mandatory Fields:
+                                  </Text>
+                                  <Code display="block" whiteSpace="pre" p={2} borderRadius="sm" fontSize="xs" overflowX="auto">
+                                    {JSON.stringify(doc.extracted_fields.mandatory, null, 2)}
+                                  </Code>
+                                </Box>
+                              )}
+                              {doc.extracted_fields.optional && (
+                                <Box>
+                                  <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={1}>
+                                    Optional Fields:
+                                  </Text>
+                                  <Code display="block" whiteSpace="pre" p={2} borderRadius="sm" fontSize="xs" overflowX="auto">
+                                    {JSON.stringify(doc.extracted_fields.optional, null, 2)}
+                                  </Code>
+                                </Box>
+                              )}
+                            </Box>
+                          )}
+                        </Box>
+                      ))}
+                    </VStack>
+                  </Box>
+                  <Divider />
+                </>
+              ) : null}
+
+              {/* Cross-Validation Section */}
+              {result.cross_validation && (
+                <>
+                  <Box>
+                    <HStack justify="space-between" mb={3}>
+                      <Heading size="sm">Cross-Validation</Heading>
+                      <Badge
+                        colorScheme={getStatusColor(result.cross_validation.status)}
+                        fontSize="sm"
+                        px={3}
+                        py={1}
+                      >
+                        {result.cross_validation.status}
+                      </Badge>
+                    </HStack>
+                    {result.cross_validation.reason && (
+                      <VStack align="stretch" spacing={2}>
+                        {result.cross_validation.reason.pass_conditions?.length > 0 && (
+                          <Box>
+                            <Text fontWeight="semibold" fontSize="sm" color="green.600" mb={1}>
+                              ✓ Passed Conditions:
+                            </Text>
+                            <VStack align="stretch" spacing={1} pl={4}>
+                              {result.cross_validation.reason.pass_conditions.map((condition, index) => (
+                                <Text key={index} fontSize="sm">
+                                  {condition}
+                                </Text>
+                              ))}
+                            </VStack>
+                          </Box>
+                        )}
+
+                        {result.cross_validation.reason.fail_conditions?.length > 0 && (
+                          <Box>
+                            <Text fontWeight="semibold" fontSize="sm" color="red.600" mb={1}>
+                              ✗ Failed Conditions:
+                            </Text>
+                            <VStack align="stretch" spacing={1} pl={4}>
+                              {result.cross_validation.reason.fail_conditions.map((condition, index) => (
+                                <Text key={index} fontSize="sm">
+                                  {condition}
+                                </Text>
+                              ))}
+                            </VStack>
+                          </Box>
+                        )}
+
+                        {result.cross_validation.reason.score_explanation && (
+                          <Box>
+                            <Text fontWeight="semibold" fontSize="sm" color="gray.600" mb={1}>
+                              📊 Score Explanation:
+                            </Text>
+                            <Text fontSize="sm" pl={4}>
+                              {result.cross_validation.reason.score_explanation}
+                            </Text>
+                          </Box>
+                        )}
                       </VStack>
-                    </Box>
-                  )}
+                    )}
+                  </Box>
+                  <Divider />
+                </>
+              )}
 
-                  {result.reason?.fail_conditions?.length > 0 && (
-                    <Box>
-                      <Text fontWeight="semibold" fontSize="sm" color="red.600" mb={1}>
-                        ❌ Failed Conditions:
-                      </Text>
-                      <VStack align="stretch" spacing={1} pl={4}>
-                        {result.reason.fail_conditions.map((condition, index) => (
-                          <Text key={index} fontSize="sm">
-                            {condition}
+              {/* Legacy Single Document Validation Display (Backward Compatibility) */}
+              {!result.documents && result.reason && (
+                <>
+                  <Box>
+                    <Text fontWeight="bold" mb={2}>
+                      Validation Details:
+                    </Text>
+                    <VStack align="stretch" spacing={3}>
+                      {result.reason?.pass_conditions?.length > 0 && (
+                        <Box>
+                          <Text fontWeight="semibold" fontSize="sm" color="green.600" mb={1}>
+                            ✅ Passed Conditions:
                           </Text>
-                        ))}
-                      </VStack>
-                    </Box>
-                  )}
+                          <VStack align="stretch" spacing={1} pl={4}>
+                            {result.reason.pass_conditions.map((condition, index) => (
+                              <Text key={index} fontSize="sm">
+                                {condition}
+                              </Text>
+                            ))}
+                          </VStack>
+                        </Box>
+                      )}
 
-                  {result.reason?.user_questions?.length > 0 && (
-                    <Box>
-                      <Text fontWeight="semibold" fontSize="sm" color="blue.600" mb={1}>
-                        💬 Questions & Answers:
-                      </Text>
-                      <VStack align="stretch" spacing={1} pl={4}>
-                        {result.reason.user_questions.map((qa, index) => (
-                          <Text key={index} fontSize="sm">
-                            {qa}
+                      {result.reason?.fail_conditions?.length > 0 && (
+                        <Box>
+                          <Text fontWeight="semibold" fontSize="sm" color="red.600" mb={1}>
+                            ❌ Failed Conditions:
                           </Text>
-                        ))}
-                      </VStack>
-                    </Box>
-                  )}
+                          <VStack align="stretch" spacing={1} pl={4}>
+                            {result.reason.fail_conditions.map((condition, index) => (
+                              <Text key={index} fontSize="sm">
+                                {condition}
+                              </Text>
+                            ))}
+                          </VStack>
+                        </Box>
+                      )}
 
-                  {result.reason?.score_explanation && (
-                    <Box>
-                      <Text fontWeight="semibold" fontSize="sm" color="gray.600" mb={1}>
-                        📊 Score Breakdown:
-                      </Text>
-                      <Text fontSize="sm" pl={4}>
-                        {result.reason.score_explanation}
-                      </Text>
-                    </Box>
-                  )}
-                </VStack>
-              </Box>
+                      {result.reason?.user_questions?.length > 0 && (
+                        <Box>
+                          <Text fontWeight="semibold" fontSize="sm" color="blue.600" mb={1}>
+                            💬 Questions & Answers:
+                          </Text>
+                          <VStack align="stretch" spacing={1} pl={4}>
+                            {result.reason.user_questions.map((qa, index) => (
+                              <Text key={index} fontSize="sm">
+                                {qa}
+                              </Text>
+                            ))}
+                          </VStack>
+                        </Box>
+                      )}
+
+                      {result.reason?.score_explanation && (
+                        <Box>
+                          <Text fontWeight="semibold" fontSize="sm" color="gray.600" mb={1}>
+                            📊 Score Breakdown:
+                          </Text>
+                          <Text fontSize="sm" pl={4}>
+                            {result.reason.score_explanation}
+                          </Text>
+                        </Box>
+                      )}
+                    </VStack>
+                  </Box>
+                  <Divider />
+                </>
+              )}
 
               {result.tampering_status === 'enabled' && (
                 <>
@@ -873,21 +1058,6 @@ const ValidateDocument = () => {
 
               <Divider />
 
-              <Box>
-                <Text fontWeight="bold" mb={2}>
-                  Extracted Data:
-                </Text>
-                <Code
-                  display="block"
-                  whiteSpace="pre"
-                  p={4}
-                  borderRadius="md"
-                  overflowX="auto"
-                >
-                  {JSON.stringify(result.doc_extracted_json, null, 2)}
-                </Code>
-              </Box>
-
               {result.reference_images && result.reference_images.length > 0 && (
                 <>
                   <Divider />
@@ -949,214 +1119,6 @@ const ValidateDocument = () => {
           </Box>
         )}
 
-        {/* Multi-Document Validation Result */}
-        {result && validationType === 'multi' && (
-          <VStack spacing={6} align="stretch">
-            {/* Overall Status */}
-            {/* <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
-              <VStack spacing={4} align="stretch">
-                <HStack justify="space-between">
-                  <Heading size="md">Overall Validation Result</Heading>
-                  <Badge
-                    colorScheme={getStatusColor(result.overall_status)}
-                    fontSize="xl"
-                    px={4}
-                    py={2}
-                    display="flex"
-                    alignItems="center"
-                    gap={2}
-                  >
-                    <Icon as={result.overall_status === 'pass' ? FiCheckCircle : FiXCircle} />
-                    {result.overall_status.toUpperCase()}
-                  </Badge>
-                </HStack>
-                <Text fontSize="md" color="gray.600">
-                  {result.overall_message}
-                </Text>
-              </VStack>
-            </Box> */}
-
-
-            {/* Supporting Documents */}
-            {/* <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
-              <Heading size="md" mb={4}>Supporting Documents</Heading>
-              <VStack spacing={4} align="stretch">
-                {result.supporting_documents.map((doc, index) => (
-                  <Box key={index} p={4} bg={dropBg} borderRadius="md" borderWidth="1px" borderColor={borderColor}>
-                    <HStack justify="space-between" mb={2}>
-                      <HStack>
-                        <Badge colorScheme="purple">{index + 1}</Badge>
-                        <Text fontWeight="bold">{doc.file_name}</Text>
-                      </HStack>
-                      <HStack>
-                        <Badge colorScheme={getStatusColor(doc.validation_status)} px={2} py={1}>
-                          {doc.validation_status.toUpperCase()}
-                        </Badge>
-                        <Badge colorScheme="blue" px={2} py={1}>
-                          {doc.validation_score}/100
-                        </Badge>
-                      </HStack>
-                    </HStack>
-                    <Text fontSize="sm" color="gray.600" mb={2}>Type: {doc.document_type}</Text>
-
-                    {doc.validation_reason?.pass_conditions?.length > 0 && (
-                      <Box mb={2}>
-                        <Text fontWeight="semibold" fontSize="xs" color="green.600" mb={1}>
-                          ✅ Passed:
-                        </Text>
-                        <VStack align="stretch" spacing={1} pl={2}>
-                          {doc.validation_reason.pass_conditions.map((condition, i) => (
-                            <Text key={i} fontSize="xs">{condition}</Text>
-                          ))}
-                        </VStack>
-                      </Box>
-                    )}
-
-                    {doc.validation_reason?.fail_conditions?.length > 0 && (
-                      <Box>
-                        <Text fontWeight="semibold" fontSize="xs" color="red.600" mb={1}>
-                          ❌ Failed:
-                        </Text>
-                        <VStack align="stretch" spacing={1} pl={2}>
-                          {doc.validation_reason.fail_conditions.map((condition, i) => (
-                            <Text key={i} fontSize="xs">{condition}</Text>
-                          ))}
-                        </VStack>
-                      </Box>
-                    )}
-                  </Box>
-                ))}
-              </VStack>
-            </Box> */}
-
-            {/* Agentic Cross Validation */}
-            <Box bg={bg} p={6} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
-              <VStack spacing={4} align="stretch">
-                <HStack justify="space-between">
-                  <Heading size="md">Agentic Cross Validation</Heading>
-                  <HStack>
-                    <Badge
-                      colorScheme={getStatusColor(result.agentic_cross_validation.status)}
-                      fontSize="lg"
-                      px={3}
-                      py={1}
-                      display="flex"
-                      alignItems="center"
-                      gap={2}
-                    >
-                      <Icon as={result.agentic_cross_validation.status === 'pass' ? FiCheckCircle : FiXCircle} />
-                      {result.agentic_cross_validation.status.toUpperCase()}
-                    </Badge>
-                    <Badge
-                      colorScheme={result.agentic_cross_validation.risk_score > 70 ? 'red' : result.agentic_cross_validation.risk_score > 40 ? 'orange' : 'green'}
-                      fontSize="lg"
-                      px={3}
-                      py={1}
-                    >
-                      Risk Score: {result.agentic_cross_validation.risk_score}/100
-                    </Badge>
-                  </HStack>
-                </HStack>
-
-                <Divider />
-
-                <Box p={3} bg={result.agentic_cross_validation.status === 'pass' ? 'green.50' : 'red.50'} borderRadius="md" borderWidth="1px" borderColor={result.agentic_cross_validation.status === 'pass' ? 'green.200' : 'red.200'}>
-                  <Text fontSize="sm">{result.agentic_cross_validation.overall_message}</Text>
-                </Box>
-
-                {/* Document Relationship */}
-                {result.agentic_cross_validation.document_relationship && (
-                  <Box>
-                    <HStack justify="space-between" mb={2}>
-                      <Text fontWeight="bold">Document Relationship</Text>
-                      <Badge colorScheme={result.agentic_cross_validation.document_relationship.relationships_valid ? 'green' : 'red'}>
-                        {result.agentic_cross_validation.document_relationship.relationships_valid ? 'VALID' : 'INVALID'}
-                      </Badge>
-                    </HStack>
-                    <VStack align="stretch" spacing={1} pl={4}>
-                      {result.agentic_cross_validation.document_relationship.findings.map((finding, i) => (
-                        <Text key={i} fontSize="sm">• {finding}</Text>
-                      ))}
-                    </VStack>
-                  </Box>
-                )}
-
-                {/* Consistency Checks */}
-                {result.agentic_cross_validation.contradictions?.length > 0 && (
-                  <Box>
-                    <Text fontWeight="bold" fontSize="sm" color="red.600" mb={2}>
-                      ⚠️ Contradictions Found:
-                    </Text>
-                    <VStack align="stretch" spacing={2}>
-                      {result.agentic_cross_validation.contradictions.map((contradiction, i) => (
-                        <Box key={i} p={3} bg="red.50" borderRadius="md" borderWidth="1px" borderColor="red.200">
-                          <HStack justify="space-between" mb={2}>
-                            <Text fontSize="sm" fontWeight="bold">{contradiction.field_name}</Text>
-                            <Badge colorScheme="orange" size="sm">
-                              {contradiction.severity}
-                            </Badge>
-                          </HStack>
-                          <Text fontSize="xs" mb={2}>{contradiction.explanation}</Text>
-                          <VStack align="stretch" spacing={1} fontSize="xs" color="gray.600" pl={2}>
-                            {contradiction.conflicting_documents?.map((doc, docIndex) => (
-                              <Text key={docIndex}>
-                                • <Text as="span" fontWeight="bold">{doc.type}:</Text> {doc.value}
-                              </Text>
-                            ))}
-                          </VStack>
-                        </Box>
-                      ))}
-                    </VStack>
-                  </Box>
-                )}
-
-                {/* Document Agreement */}
-                {result.agentic_cross_validation.document_agreement && (
-                  <Box>
-                    <Text fontWeight="bold" mb={2}>Document Agreement</Text>
-                    <HStack spacing={4}>
-                      <Badge colorScheme="blue" px={3} py={1}>
-                        Total: {result.agentic_cross_validation.document_agreement.total_documents}
-                      </Badge>
-                      <Badge colorScheme="green" px={3} py={1}>
-                        Agreement: {result.agentic_cross_validation.document_agreement.agreement_percentage}%
-                      </Badge>
-                    </HStack>
-                    <Text fontSize="sm" mt={2} color="gray.600">
-                      {result.agentic_cross_validation.document_agreement.message}
-                    </Text>
-                  </Box>
-                )}
-
-                {/* Warnings */}
-                {result.agentic_cross_validation.warnings?.length > 0 && (
-                  <Box>
-                    <Text fontWeight="bold" fontSize="sm" color="orange.600" mb={2}>
-                      ⚠️ Warnings:
-                    </Text>
-                    <VStack align="stretch" spacing={1} pl={4}>
-                      {result.agentic_cross_validation.warnings.map((warning, i) => (
-                        <Text key={i} fontSize="sm">• {warning}</Text>
-                      ))}
-                    </VStack>
-                  </Box>
-                )}
-              </VStack>
-            </Box>
-
-            {/* Processing Info */}
-            <Box bg={bg} p={4} borderRadius="lg" borderWidth="1px" borderColor={borderColor}>
-              <HStack justify="space-between">
-                <Text fontSize="sm" color="gray.500">
-                  Total Processing Time: {result.processing_time_ms}ms
-                </Text>
-                <Text fontSize="sm" color="gray.500">
-                  Agent: {result.agent_name}
-                </Text>
-              </HStack>
-            </Box>
-          </VStack>
-        )}
       </VStack>
     </MainLayout>
   );

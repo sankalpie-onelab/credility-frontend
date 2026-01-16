@@ -43,6 +43,10 @@ import {
   AccordionButton,
   AccordionPanel,
   AccordionIcon,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
 } from '@chakra-ui/react';
 import { FiArrowLeft, FiUsers, FiActivity, FiFileText } from 'react-icons/fi';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -65,6 +69,9 @@ const AgentStats = () => {
 
   const bg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const dropBg = useColorModeValue('gray.50', 'gray.600');
+  const textColor = useColorModeValue('gray.600', 'gray.300');
+  const cardBg = useColorModeValue('white', 'gray.700');
 
   useEffect(() => {
     fetchData();
@@ -438,6 +445,28 @@ const AgentStats = () => {
           <ModalBody>
             {selectedLog && (
               <VStack spacing={6} align="stretch">
+                {/* Final Status Alert */}
+                {selectedLog.final_status && (
+                  <>
+                    <Alert
+                      status={selectedLog.final_status.status === 'pass' ? 'success' : 'error'}
+                      variant="subtle"
+                      borderRadius="md"
+                    >
+                      <AlertIcon />
+                      <Box>
+                        <AlertTitle>Final Status: {selectedLog.final_status.status?.toUpperCase()}</AlertTitle>
+                        {selectedLog.final_status.manual_review === 'YES' && (
+                          <AlertDescription>
+                            This validation requires Human Verification. Please check the Human Verification items below.
+                          </AlertDescription>
+                        )}
+                      </Box>
+                    </Alert>
+                    <Divider />
+                  </>
+                )}
+
                 {/* Overview Stats */}
                 <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
                   <Box>
@@ -454,7 +483,7 @@ const AgentStats = () => {
                   </Box>
                   <Box>
                     <Text fontSize="xs" color="gray.500" mb={1}>Score</Text>
-                    <Text fontSize="2xl" fontWeight="bold" color={getStatusColor(selectedLog.status) + '.500'}>
+                    <Text fontSize="2xl" fontWeight="bold" color={getStatusColor(selectedLog.final_status?.status || selectedLog.status) + '.500'}>
                       {selectedLog.score}
                     </Text>
                   </Box>
@@ -488,9 +517,78 @@ const AgentStats = () => {
                       {selectedLog.request_ip || 'N/A'}
                     </Text>
                   </Box>
+                  {selectedLog.final_status && (
+                    <>
+                      <Box>
+                        <Text fontSize="xs" color="gray.500" mb={1}>Final Status</Text>
+                        <Badge colorScheme={getStatusColor(selectedLog.final_status.status)} fontSize="sm">
+                          {selectedLog.final_status.status}
+                        </Badge>
+                      </Box>
+                      <Box>
+                        <Text fontSize="xs" color="gray.500" mb={1}>Human Verification</Text>
+                        <Badge colorScheme={selectedLog.final_status.manual_review === 'YES' ? 'orange' : 'green'} fontSize="sm">
+                          {selectedLog.final_status.manual_review || 'NO'}
+                        </Badge>
+                      </Box>
+                    </>
+                  )}
                 </SimpleGrid>
 
                 <Divider />
+
+                {/* Human Verification Items */}
+                {selectedLog.manual_review_items && selectedLog.manual_review_items.length > 0 && (
+                  <>
+                    <Box>
+                      <Heading size="sm" mb={3}>Human Verification Items</Heading>
+                      <VStack align="stretch" spacing={3}>
+                        {selectedLog.manual_review_items.map((item, index) => {
+                          const severityColor = item.severity === 'CRITICAL' ? 'red' :
+                                               item.severity === 'HIGH' ? 'orange' :
+                                               item.severity === 'MEDIUM' ? 'yellow' : 'gray';
+                          return (
+                            <Box
+                              key={index}
+                              p={4}
+                              bg={dropBg}
+                              borderRadius="md"
+                              borderLeftWidth="4px"
+                              borderLeftColor={`${severityColor}.500`}
+                            >
+                              <HStack justify="space-between" mb={2}>
+                                <Text fontWeight="bold" fontSize="sm">
+                                  {item.field}
+                                </Text>
+                                <Badge colorScheme={severityColor} fontSize="xs">
+                                  {item.severity}
+                                </Badge>
+                              </HStack>
+                              <Text fontSize="sm" color={textColor} mb={2}>
+                                {item.reason}
+                              </Text>
+                              <Box
+                                p={2}
+                                bg={cardBg}
+                                borderRadius="sm"
+                                borderWidth="1px"
+                                borderColor={borderColor}
+                              >
+                                <Text fontSize="xs" fontWeight="semibold" color="blue.600" mb={1}>
+                                  Recommended Action:
+                                </Text>
+                                <Text fontSize="xs">
+                                  {item.recommended_action}
+                                </Text>
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                      </VStack>
+                    </Box>
+                    <Divider />
+                  </>
+                )}
 
                 {/* Document Image */}
                 {selectedLog.file_input && (
@@ -555,80 +653,259 @@ const AgentStats = () => {
   </Box>
 )}
 
-                {/* Validation Results */}
-                <Box>
-                  <Heading size="sm" mb={3}>Validation Results</Heading>
-                  <Box 
-                    p={4} 
-                    // bg={useColorModeValue('gray.50', 'gray.600')} 
-                    borderRadius="md"
-                  >
-                    <Text fontSize="sm" mb={2} fontWeight="bold">
-                      {selectedLog.reason?.score_explanation || 'No explanation provided'}
-                    </Text>
-                    
-                    {selectedLog.reason?.pass_conditions?.length > 0 && (
-                      <Box mb={3}>
-                        <Text fontSize="sm" fontWeight="bold" color="green.500" mb={1}>
-                          Passed Conditions:
-                        </Text>
-                        <List spacing={1}>
-                          {selectedLog.reason.pass_conditions.map((condition, i) => (
-                            <ListItem key={i} fontSize="xs" color="green.600">
-                              {condition}
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
-                    )}
-                    
-                    {selectedLog.reason?.fail_conditions?.length > 0 && (
-                      <Box>
-                        <Text fontSize="sm" fontWeight="bold" color="red.500" mb={1}>
-                          Failed Conditions:
-                        </Text>
-                        <List spacing={1}>
-                          {selectedLog.reason.fail_conditions.map((condition, i) => (
-                            <ListItem key={i} fontSize="xs" color="red.600">
-                              {condition}
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
-                    )}
+                {/* Documents Array Display */}
+                {selectedLog.documents && selectedLog.documents.length > 0 ? (
+                  <>
+                    <Box>
+                      <Heading size="sm" mb={3}>Documents ({selectedLog.documents.length})</Heading>
+                      <VStack align="stretch" spacing={4}>
+                        {selectedLog.documents.map((doc, docIndex) => (
+                          <Box
+                            key={docIndex}
+                            p={4}
+                            bg={dropBg}
+                            borderRadius="md"
+                            borderWidth="1px"
+                            borderColor={borderColor}
+                          >
+                            <HStack justify="space-between" mb={3}>
+                              <Text fontWeight="bold" fontSize="md">
+                                Document {docIndex + 1}: {doc.doc_id}
+                              </Text>
+                              <Badge
+                                colorScheme={getStatusColor(doc.validation?.status)}
+                                fontSize="sm"
+                                px={2}
+                                py={1}
+                              >
+                                {doc.validation?.status || 'UNKNOWN'}
+                              </Badge>
+                            </HStack>
 
-                    {selectedLog.reason?.user_questions?.length > 0 && (
-                      <Box mt={3}>
-                        <Text fontSize="sm" fontWeight="bold" color="blue.500" mb={1}>
-                          User Questions:
-                        </Text>
-                        <List spacing={1}>
-                          {selectedLog.reason.user_questions.map((question, i) => (
-                            <ListItem key={i} fontSize="xs" color="blue.600">
-                              {question}
-                            </ListItem>
-                          ))}
-                        </List>
-                      </Box>
-                    )}
-                  </Box>
-                </Box>
+                            {/* Document Validation Details */}
+                            {doc.validation?.reason && (
+                              <Box mb={3}>
+                                <VStack align="stretch" spacing={2}>
+                                  {doc.validation.reason.pass_conditions?.length > 0 && (
+                                    <Box>
+                                      <Text fontWeight="semibold" fontSize="xs" color="green.600" mb={1}>
+                                        ✓ Passed Conditions:
+                                      </Text>
+                                      <List spacing={1} pl={3}>
+                                        {doc.validation.reason.pass_conditions.map((condition, index) => (
+                                          <ListItem key={index} fontSize="xs">
+                                            {condition}
+                                          </ListItem>
+                                        ))}
+                                      </List>
+                                    </Box>
+                                  )}
 
-                {/* Extracted Data */}
-                {selectedLog.doc_extracted_json && (
+                                  {doc.validation.reason.fail_conditions?.length > 0 && (
+                                    <Box>
+                                      <Text fontWeight="semibold" fontSize="xs" color="red.600" mb={1}>
+                                        ✗ Failed Conditions:
+                                      </Text>
+                                      <List spacing={1} pl={3}>
+                                        {doc.validation.reason.fail_conditions.map((condition, index) => (
+                                          <ListItem key={index} fontSize="xs">
+                                            {condition}
+                                          </ListItem>
+                                        ))}
+                                      </List>
+                                    </Box>
+                                  )}
+
+                                  {doc.validation.reason.user_questions?.length > 0 && (
+                                    <Box>
+                                      <Text fontWeight="semibold" fontSize="xs" color="blue.600" mb={1}>
+                                        💬 Questions & Answers:
+                                      </Text>
+                                      <List spacing={1} pl={3}>
+                                        {doc.validation.reason.user_questions.map((qa, index) => (
+                                          <ListItem key={index} fontSize="xs">
+                                            {qa}
+                                          </ListItem>
+                                        ))}
+                                      </List>
+                                    </Box>
+                                  )}
+
+                                  {doc.validation.reason.score_explanation && (
+                                    <Box>
+                                      <Text fontWeight="semibold" fontSize="xs" color="gray.600" mb={1}>
+                                        📊 Score Explanation:
+                                      </Text>
+                                      <Text fontSize="xs" pl={3}>
+                                        {doc.validation.reason.score_explanation}
+                                      </Text>
+                                    </Box>
+                                  )}
+                                </VStack>
+                              </Box>
+                            )}
+
+                            {/* Extracted Fields */}
+                            {doc.extracted_fields && (
+                              <Box>
+                                <Text fontWeight="semibold" fontSize="sm" mb={2}>
+                                  Extracted Fields:
+                                </Text>
+                                {doc.extracted_fields.mandatory && (
+                                  <Box mb={2}>
+                                    <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={1}>
+                                      Mandatory Fields:
+                                    </Text>
+                                    <Code display="block" whiteSpace="pre" p={2} borderRadius="sm" fontSize="xs" overflowX="auto">
+                                      {JSON.stringify(doc.extracted_fields.mandatory, null, 2)}
+                                    </Code>
+                                  </Box>
+                                )}
+                                {doc.extracted_fields.optional && (
+                                  <Box>
+                                    <Text fontSize="xs" fontWeight="bold" color="gray.600" mb={1}>
+                                      Optional Fields:
+                                    </Text>
+                                    <Code display="block" whiteSpace="pre" p={2} borderRadius="sm" fontSize="xs" overflowX="auto">
+                                      {JSON.stringify(doc.extracted_fields.optional, null, 2)}
+                                    </Code>
+                                  </Box>
+                                )}
+                              </Box>
+                            )}
+                          </Box>
+                        ))}
+                      </VStack>
+                    </Box>
+                    <Divider />
+                  </>
+                ) : null}
+
+                {/* Cross-Validation Section */}
+                {selectedLog.cross_validation && (
+                  <>
+                    <Box>
+                      <HStack justify="space-between" mb={3}>
+                        <Heading size="sm">Cross-Validation</Heading>
+                        <Badge
+                          colorScheme={getStatusColor(selectedLog.cross_validation.status)}
+                          fontSize="sm"
+                          px={3}
+                          py={1}
+                        >
+                          {selectedLog.cross_validation.status}
+                        </Badge>
+                      </HStack>
+                      {selectedLog.cross_validation.reason && (
+                        <VStack align="stretch" spacing={2}>
+                          {selectedLog.cross_validation.reason.pass_conditions?.length > 0 && (
+                            <Box>
+                              <Text fontWeight="semibold" fontSize="sm" color="green.600" mb={1}>
+                                ✓ Passed Conditions:
+                              </Text>
+                              <List spacing={1} pl={4}>
+                                {selectedLog.cross_validation.reason.pass_conditions.map((condition, index) => (
+                                  <ListItem key={index} fontSize="xs">
+                                    {condition}
+                                  </ListItem>
+                                ))}
+                              </List>
+                            </Box>
+                          )}
+
+                          {selectedLog.cross_validation.reason.fail_conditions?.length > 0 && (
+                            <Box>
+                              <Text fontWeight="semibold" fontSize="sm" color="red.600" mb={1}>
+                                ✗ Failed Conditions:
+                              </Text>
+                              <List spacing={1} pl={4}>
+                                {selectedLog.cross_validation.reason.fail_conditions.map((condition, index) => (
+                                  <ListItem key={index} fontSize="xs">
+                                    {condition}
+                                  </ListItem>
+                                ))}
+                              </List>
+                            </Box>
+                          )}
+
+                          {selectedLog.cross_validation.reason.score_explanation && (
+                            <Box>
+                              <Text fontWeight="semibold" fontSize="sm" color="gray.600" mb={1}>
+                                📊 Score Explanation:
+                              </Text>
+                              <Text fontSize="sm" pl={4}>
+                                {selectedLog.cross_validation.reason.score_explanation}
+                              </Text>
+                            </Box>
+                          )}
+                        </VStack>
+                      )}
+                    </Box>
+                    <Divider />
+                  </>
+                )}
+
+                {/* Legacy Validation Results (Backward Compatibility) */}
+                {!selectedLog.documents && selectedLog.reason && (
                   <Box>
-                    <Heading size="sm" mb={3}>Extracted Data</Heading>
-                    <Code 
-                      display="block" 
-                      whiteSpace="pre" 
+                    <Heading size="sm" mb={3}>Validation Results</Heading>
+                    <Box 
                       p={4} 
                       borderRadius="md"
-                      fontSize="xs"
                     >
-                      {JSON.stringify(selectedLog.doc_extracted_json, null, 2)}
-                    </Code>
+                      <Text fontSize="sm" mb={2} fontWeight="bold">
+                        {selectedLog.reason?.score_explanation || 'No explanation provided'}
+                      </Text>
+                      
+                      {selectedLog.reason?.pass_conditions?.length > 0 && (
+                        <Box mb={3}>
+                          <Text fontSize="sm" fontWeight="bold" color="green.500" mb={1}>
+                            Passed Conditions:
+                          </Text>
+                          <List spacing={1}>
+                            {selectedLog.reason.pass_conditions.map((condition, i) => (
+                              <ListItem key={i} fontSize="xs" color="green.600">
+                                {condition}
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Box>
+                      )}
+                      
+                      {selectedLog.reason?.fail_conditions?.length > 0 && (
+                        <Box>
+                          <Text fontSize="sm" fontWeight="bold" color="red.500" mb={1}>
+                            Failed Conditions:
+                          </Text>
+                          <List spacing={1}>
+                            {selectedLog.reason.fail_conditions.map((condition, i) => (
+                              <ListItem key={i} fontSize="xs" color="red.600">
+                                {condition}
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Box>
+                      )}
+
+                      {selectedLog.reason?.user_questions?.length > 0 && (
+                        <Box mt={3}>
+                          <Text fontSize="sm" fontWeight="bold" color="blue.500" mb={1}>
+                            User Questions:
+                          </Text>
+                          <List spacing={1}>
+                            {selectedLog.reason.user_questions.map((question, i) => (
+                              <ListItem key={i} fontSize="xs" color="blue.600">
+                                {question}
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Box>
+                      )}
+                    </Box>
+                    <Divider />
                   </Box>
                 )}
+
 
                 {/* OCR Information */}
                 <Box>
