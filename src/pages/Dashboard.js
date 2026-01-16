@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Heading,
@@ -17,8 +17,12 @@ import {
   Spinner,
   Center,
   useToast,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  IconButton,
 } from '@chakra-ui/react';
-import { FiPlus, FiLayers, FiBarChart2, FiActivity } from 'react-icons/fi';
+import { FiPlus, FiLayers, FiBarChart2, FiActivity, FiSearch, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
 import AgentCard from '../components/Agent/AgentCard';
@@ -36,6 +40,9 @@ const Dashboard = () => {
   const [agents, setAgents] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   const cardBg = useColorModeValue('white', 'gray.700');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
@@ -44,9 +51,9 @@ const Dashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch agents and creator stats
+      // Fetch all agents and creator stats
       const [agentsData, statsData] = await Promise.all([
-        listAgents({ creator_id: creatorId, limit: 10 }),
+        listAgents({ limit: 1000 }), // Fetch more agents for client-side filtering
         getCreatorStats(creatorId),
       ]);
 
@@ -75,6 +82,42 @@ const Dashboard = () => {
 
   const handleAgentCreated = () => {
     fetchData();
+  };
+
+  // Filter and paginate agents
+  const filteredAndPaginatedAgents = useMemo(() => {
+    // Filter by search term (search in agent_name and display_name)
+    const filtered = agents.filter((agent) => {
+      const searchLower = searchTerm.toLowerCase();
+      const agentName = (agent.agent_name || '').toLowerCase();
+      const displayName = (agent.display_name || '').toLowerCase();
+      return agentName.includes(searchLower) || displayName.includes(searchLower);
+    });
+
+    // Calculate pagination
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginated = filtered.slice(startIndex, endIndex);
+
+    return {
+      agents: paginated,
+      totalPages,
+      totalFiltered: filtered.length,
+    };
+  }, [agents, searchTerm, currentPage, itemsPerPage]);
+
+  // Reset to page 1 when search term changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const handlePreviousPage = () => {
+    setCurrentPage((prev) => Math.max(1, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setCurrentPage((prev) => Math.min(filteredAndPaginatedAgents.totalPages, prev + 1));
   };
 
   if (loading) {
@@ -199,22 +242,32 @@ const Dashboard = () => {
           </Box>
         </SimpleGrid>
 
-        {/* Recent Agents */}
+        {/* All Agents */}
         <Box>
-          <HStack justify="space-between" mb={4}>
-            <Heading size="md">Recent Agents</Heading>
-            {agents.length > 0 && (
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => navigate('/my-agents')}
-              >
-                View All
-              </Button>
-            )}
-          </HStack>
+          <VStack spacing={4} align="stretch" mb={4}>
+            <HStack justify="space-between">
+              <Heading size="md">All Agents</Heading>
+              <Text color="gray.500" fontSize="sm">
+                {filteredAndPaginatedAgents.totalFiltered} {filteredAndPaginatedAgents.totalFiltered === 1 ? 'agent' : 'agents'}
+              </Text>
+            </HStack>
+            
+            {/* Search Field */}
+            <InputGroup maxW="400px">
+              <InputLeftElement pointerEvents="none">
+                <Icon as={FiSearch} color="gray.400" />
+              </InputLeftElement>
+              <Input
+                placeholder="Search agents by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                bg={cardBg}
+                borderColor={borderColor}
+              />
+            </InputGroup>
+          </VStack>
 
-          {agents.length === 0 ? (
+          {filteredAndPaginatedAgents.totalFiltered === 0 ? (
             <Box
               bg={cardBg}
               p={12}
@@ -225,21 +278,52 @@ const Dashboard = () => {
             >
               <Icon as={FiLayers} boxSize={12} color="gray.400" mb={4} />
               <Heading size="md" mb={2} color="gray.500">
-                No agents yet
+                {searchTerm ? 'No agents found' : 'No agents yet'}
               </Heading>
               <Text color="gray.500" mb={4}>
-                Create your first agent to start validating documents
+                {searchTerm 
+                  ? `No agents match "${searchTerm}"`
+                  : 'Create your first agent to start validating documents'}
               </Text>
-              <Button leftIcon={<Icon as={FiPlus} />} colorScheme="blue" onClick={onOpen}>
-                Create Your First Agent
-              </Button>
+              {!searchTerm && (
+                <Button leftIcon={<Icon as={FiPlus} />} colorScheme="blue" onClick={onOpen}>
+                  Create Your First Agent
+                </Button>
+              )}
             </Box>
           ) : (
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-              {agents.map((agent) => (
-                <AgentCard key={agent.id} agent={agent} />
-              ))}
-            </SimpleGrid>
+            <>
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6} mb={4}>
+                {filteredAndPaginatedAgents.agents.map((agent) => (
+                  <AgentCard key={agent.id} agent={agent} />
+                ))}
+              </SimpleGrid>
+
+              {/* Pagination Controls */}
+              {filteredAndPaginatedAgents.totalPages > 1 && (
+                <HStack justify="center" spacing={4} mt={6}>
+                  <IconButton
+                    icon={<FiChevronLeft />}
+                    onClick={handlePreviousPage}
+                    isDisabled={currentPage === 1}
+                    aria-label="Previous page"
+                    variant="outline"
+                  />
+                  <HStack spacing={2}>
+                    <Text fontSize="sm" color="gray.600">
+                      Page {currentPage} of {filteredAndPaginatedAgents.totalPages}
+                    </Text>
+                  </HStack>
+                  <IconButton
+                    icon={<FiChevronRight />}
+                    onClick={handleNextPage}
+                    isDisabled={currentPage === filteredAndPaginatedAgents.totalPages}
+                    aria-label="Next page"
+                    variant="outline"
+                  />
+                </HStack>
+              )}
+            </>
           )}
         </Box>
       </VStack>
